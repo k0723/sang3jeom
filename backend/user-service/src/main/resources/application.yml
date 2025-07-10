@@ -1,0 +1,22 @@
+spring:
+  config:
+    import: "optional:dotenv:./.env"
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id:     "${GOOGLE_CLIENT_ID}"
+            client-secret: "${GOOGLE_CLIENT_SECRET}"
+            scope:
+              - openid
+              - profile
+              - email
+            # base-url 환경변수로부터 가져와서 redirect-uri 구성
+            redirect-uri: "${BASE_URL}/login/oauth2/code/google"
+
+jwt:
+  secret: "${JWT_SECRET}"
+  expiration-ms: 3600000    # 1시간
+
