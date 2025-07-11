@@ -1,34 +1,31 @@
 package com.sang3jeom.order_service.model;
 
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "cart_items")
-public class Cart {
-
+@Table(name = "orders")
+public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    private int userId;
+    private Integer userId;
 
-    private int goodsId;
+    private String status;
 
-    private int quantity;
-
-    private ZonedDateTime addedAt;
+    private LocalDateTime orderDate;
 
     @PrePersist
     public void prePersist() {
-        this.addedAt = ZonedDateTime.now();
+        this.orderDate = LocalDateTime.now();
     }
 }
