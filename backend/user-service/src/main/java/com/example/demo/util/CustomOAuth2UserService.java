@@ -1,36 +1,51 @@
-package com.example.demo.util;  // 위치 그대로 쓰셔도 되고, 더 명확히 하시려면 'service' 또는 'security' 패키지로 옮기셔도 좋습니다.
+package com.example.demo.util;
 
-
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.stereotype.Service;
+import com.example.demo.domain.User;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.security.OAuth2UserAdapter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
 
-import com.example.demo.mapper.OAuth2UserMapper;        // mapper 위치에 맞춰 경로 조정
-import com.example.demo.repository.UserRepository;
-import com.example.demo.security.PrincipalDetails;      // 만든 위치에 맞춰 조정
+import java.util.Collections;
+import java.util.List;
 
 @Service
-public class CustomOAuth2UserService
-      extends DefaultOAuth2UserService
-      implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
-    private final OAuth2UserMapper mapper;
     private final UserRepository userRepo;
 
-    public CustomOAuth2UserService(OAuth2UserMapper mapper,
-                                   UserRepository userRepo) {
-        this.mapper   = mapper;
+    // ✅ delegate 제거: UserRepository만 주입
+    public CustomOAuth2UserService(UserRepository userRepo) {
         this.userRepo = userRepo;
     }
 
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
-        OAuth2User oauthUser = super.loadUser(userRequest);
-        // 이메일로 기존 회원 조회, 없으면 최초 저장
-        var userEntity = userRepo.findByEmail(oauthUser.getAttribute("email"))
-            .orElseGet(() -> userRepo.save(mapper.toUser(oauthUser)));
-        return new PrincipalDetails(userEntity, oauthUser.getAttributes());
+    public OAuth2User loadUser(OAuth2UserRequest userRequest)
+            throws OAuth2AuthenticationException {
+        // 내부에서 직접 생성
+        OAuth2User oauthUser = new DefaultOAuth2UserService().loadUser(userRequest);
+
+        // (생략) 기존 사용자 조회/저장 로직
+        User userEntity = userRepo.findByEmail(oauthUser.getAttribute("email"))
+            .orElseGet(() -> {
+                User newUser = new User();
+                newUser.setEmail(oauthUser.getAttribute("email"));
+                newUser.setPassword("");
+                newUser.setName(oauthUser.getAttribute("name"));
+                newUser.setRoles(false);
+                return userRepo.save(newUser);
+            });
+
+        List<GrantedAuthority> authorities = Collections.singletonList(
+            new SimpleGrantedAuthority(userEntity.isRoles() ? "ROLE_ADMIN" : "ROLE_USER")
+        );
+
+        return new OAuth2UserAdapter(oauthUser, authorities);
     }
 }

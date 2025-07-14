@@ -29,10 +29,10 @@ public class UserCreateRequest {
     }
 
     public User toEntity() {
-        User u = new User();
-        u.setUsername(this.username);
-        u.setEmail(this.email);
-        u.setPassword(this.password);
-        return u;
-    }
+    User u = new User();
+    u.setUsername(this.username);
+    u.setEmail(this.email);
+    // u.setPassword(...) 호출하지 않음
+    return u;
+}
 }

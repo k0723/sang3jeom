@@ -4,6 +4,7 @@ package com.example.demo.service;
 import com.example.demo.domain.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.dto.UserCreateRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.demo.dto.UserDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,13 +15,39 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository repo;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository repo) {
+    public UserService(UserRepository repo,
+                       PasswordEncoder passwordEncoder
+    ) {
         this.repo = repo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserDto create(UserCreateRequest req) {
-        User saved = repo.save(req.toEntity());
+        // 1) username 중복 검사
+        if (repo.existsByUsername(req.getUsername())) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Username already exists: " + req.getUsername()
+            );
+        }
+        // 2) email 중복 검사
+        if (repo.existsByEmail(req.getEmail())) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Email already exists: " + req.getEmail()
+            );
+        }
+
+        User user = req.toEntity();
+
+        String rawPassword = req.getPassword();               // DTO에서 원문 비밀번호 가져오기
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        user.setPasswordHash(encodedPassword);  
+
+        // 3) 저장
+        User saved = repo.save(user);
         return UserDto.fromEntity(saved);
     }
 

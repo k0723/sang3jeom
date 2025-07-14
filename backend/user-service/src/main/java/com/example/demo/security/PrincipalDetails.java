@@ -1,48 +1,68 @@
 package com.example.demo.security;
 
-import com.example.demo.domain.User;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Collection;      // ← 추가
+import java.util.Collections;     // ← 추가
 
+/**
+ * JWT 로그인(Username/Password)와 OAuth2 로그인을 모두 지원하는
+ * SecurityContext의 Principal 어댑터.
+ */
 public class PrincipalDetails implements OAuth2User, UserDetails {
-    private final User user;
-    private final Map<String, Object> attributes;
+    private final UserDetails userDetails;     // DomainUserDetails 또는 InMemoryUserDetails
+    private final OAuth2User oauth2User;       // OAuth2UserAdapter or null
 
-    public PrincipalDetails(User user, Map<String, Object> attributes) {
-        this.user = user;
-        this.attributes = attributes;
+    public PrincipalDetails(UserDetails userDetails) {
+        this.userDetails = userDetails;
+        this.oauth2User = null;
     }
 
-    // --- OAuth2User 구현 ---
+    public PrincipalDetails(OAuth2User oauth2User,
+                            UserDetails userDetails) {
+        this.oauth2User = oauth2User;
+        this.userDetails = userDetails;
+    }
+
+    // --- UserDetails 메서드 위임 ---
+    @Override public Collection<? extends GrantedAuthority> getAuthorities() {
+        return userDetails.getAuthorities();
+    }
+    @Override public String getPassword() {
+        return userDetails.getPassword();
+    }
+    @Override public String getUsername() {
+        return userDetails.getUsername();
+    }
+    @Override public boolean isAccountNonExpired() {
+        return userDetails.isAccountNonExpired();
+    }
+    @Override public boolean isAccountNonLocked() {
+        return userDetails.isAccountNonLocked();
+    }
+    @Override public boolean isCredentialsNonExpired() {
+        return userDetails.isCredentialsNonExpired();
+    }
+    @Override public boolean isEnabled() {
+        return userDetails.isEnabled();
+    }
+
+    // --- OAuth2User 메서드 위임 ---
     @Override
     public Map<String, Object> getAttributes() {
-        return attributes;
+        return oauth2User != null
+            ? oauth2User.getAttributes()
+            : Map.of();
     }
 
     @Override
     public String getName() {
-        return user.getId().toString();
+        return oauth2User != null
+            ? oauth2User.getName()
+            : userDetails.getUsername();
     }
-
-    // --- UserDetails 구현 ---
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return user.getRoles().stream()
-                   .map(SimpleGrantedAuthority::new)
-                   .collect(Collectors.toList());
-    }
-
-    @Override public String getPassword()             { return user.getPassword(); }
-    @Override public String getUsername()             { return user.getUsername(); }
-    @Override public boolean isAccountNonExpired()    { return true; }
-    @Override public boolean isAccountNonLocked()     { return true; }
-    @Override public boolean isCredentialsNonExpired(){ return true; }
-    @Override public boolean isEnabled()              { return true; }
 }

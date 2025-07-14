@@ -12,7 +12,6 @@ public class OAuth2UserMapper {
         User user = new User();
         user.setEmail(oauthUser.getAttribute("email"));
         user.setUsername(oauthUser.getAttribute("name"));
-        user.setRoles(List.of("ROLE_USER"));
         return user;
     }
 }

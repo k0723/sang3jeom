@@ -8,8 +8,8 @@ spring:
 
   datasource:
     url: ${DATASOURCE_URL:jdbc:mysql://localhost:3306/database_development?useSSL=false&serverTimezone=Asia/Seoul}
-    username: ${DATASOURCE_USERNAME}
-    password: ${DATASOURCE_PASSWORD}
+    username: ${DATASOURCE_USERNAME:root}
+    password: ${DATASOURCE_PASSWORD:1234}
 
   jpa:
     hibernate:

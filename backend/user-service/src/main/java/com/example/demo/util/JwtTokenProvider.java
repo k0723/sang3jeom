@@ -1,108 +1,78 @@
 package com.example.demo.util;
 
+import com.example.demo.util.JwtTokenProvider;
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.User;
-import jakarta.annotation.PostConstruct;  // javax → jakarta
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Date;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
-import java.nio.charset.StandardCharsets;
-import java.security.Key;
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
-    @Value("${JWT_SECRET}")
-    private String secretKey;
 
-    @Value("${spring.jwt.expiration-ms}")
-    private long validityMs;
+    @Value("${jwt.secret}")
+    private String secret;
+    @Value("${jwt.expiration-ms}")
+    private long expiryMs;
 
-    private Key key;
+    private final UserDetailsService userDetailsService;
 
-    @PostConstruct
-    public void init() {
-        key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    public JwtTokenProvider(UserDetailsService uds) {
+        this.userDetailsService = uds;
     }
 
-    // 1) 토큰 생성
-    public String createToken(String username, List<String> roles) {
-        Instant now = Instant.now();
+    public long getExpiryMs() {
+        return expiryMs;
+    }
+
+    public String generateToken(Authentication auth) {
+        String username = auth.getName();
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expiryMs);
         return Jwts.builder()
-            .setSubject(username)
-            .claim("roles", roles)
-            .setIssuedAt(Date.from(now))
-            .setExpiration(Date.from(now.plusMillis(validityMs)))
-            .signWith(key, SignatureAlgorithm.HS256)
-            .compact();
+                   .setSubject(username)
+                   .setIssuedAt(now)
+                   .setExpiration(exp)
+                   .signWith(SignatureAlgorithm.HS512, secret)
+                   .compact();
     }
 
-    // 2) 토큰에서 인증 객체 생성
-    public Authentication getAuthentication(String token) {
-        User userDetails = new User(
-            getUsername(token),
-            "",
-            getAuthorities(token)
-        );
-        return new UsernamePasswordAuthenticationToken(
-            userDetails,
-            "",
-            userDetails.getAuthorities()
-        );
-    }
-
-    // 3) 토큰 유효성 검사
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token);
+            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
             return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            // 토큰이 잘못됐거나 만료된 경우
+        } catch (JwtException|IllegalArgumentException ex) {
             return false;
         }
     }
 
-    // 4) 토큰에서 사용자명 꺼내기
-    public String getUsername(String token) {
-        return Jwts.parserBuilder()
-            .setSigningKey(key)
-            .build()
-            .parseClaimsJws(token)
-            .getBody()
-            .getSubject();
+    public Authentication getAuthentication(String token) {
+        String username = Jwts.parser().setSigningKey(secret)
+                          .parseClaimsJws(token)
+                          .getBody().getSubject();
+        var userDetails = userDetailsService.loadUserByUsername(username);
+        return new UsernamePasswordAuthenticationToken(
+            userDetails, "", userDetails.getAuthorities());
     }
+    public String createToken(String username, boolean roles) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expiryMs);
 
-    // 5) 토큰에서 roles 클레임 → GrantedAuthority 목록으로 변환
-    @SuppressWarnings("unchecked")
-    public List<GrantedAuthority> getAuthorities(String token) {
-        Claims body = Jwts.parserBuilder()
-            .setSigningKey(key)
-            .build()
-            .parseClaimsJws(token)
-            .getBody();
-
-        List<String> roles = body.get("roles", List.class);
-        return roles.stream()
-            .map(SimpleGrantedAuthority::new)
-            .collect(Collectors.toList());
+        return Jwts.builder()
+                   .setSubject(username)
+                   .claim("roles", roles)
+                   .setIssuedAt(now)
+                   .setExpiration(expiry)
+                   .signWith(SignatureAlgorithm.HS512, secret)
+                   .compact();
     }
-
-    // 6) 요청 헤더에서 토큰 추출 (JwtTokenFilter에서 사용)
-    public String resolveToken(HttpServletRequest req) {
-        String bearer = req.getHeader("Authorization");
+    public String resolveToken(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);
         }
