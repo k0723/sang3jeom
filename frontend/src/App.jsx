@@ -10,6 +10,7 @@ import MyPage from "./pages/MyPage";
 // import Admin from "./pages/Admin";
 // import Inquiry from "./pages/Inquiry";
 import CharacterMaker from './pages/CharacterMaker';
+import PaySuccess from "./pages/PaySuccess";
 import { useState } from "react";
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
         {/* <Route path="/admin" element={<Admin />} /> */}
         {/* <Route path="/inquiry" element={<Inquiry />} /> */}
         <Route path="/character-maker" element={<CharacterMaker />} />
+        <Route path="/pay/success" element={<PaySuccess />} />
       </Routes>
     </BrowserRouter>
   );

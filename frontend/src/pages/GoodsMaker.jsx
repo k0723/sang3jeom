@@ -314,6 +314,65 @@ export default function GoodsMaker() {
     return (basePrice * quantity).toLocaleString();
   };
 
+  // 결제창 띄우기 함수
+  const handleOrder = async () => {
+    const requestBody = {
+      partnerOrderId: `ORDER_${Date.now()}`,
+      partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체
+      itemName: selected.label,
+      quantity: quantity,
+      totalAmount: parseInt(selected.price.replace(/[^0-9]/g, '')) * quantity,
+      taxFreeAmount: 0
+    };
+    try {
+      const res = await fetch("http://localhost:8080/pay/ready", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+      const data = await res.json();
+      if (data.next_redirect_pc_url) {
+        // 결제 승인에 필요하므로 저장
+        sessionStorage.setItem("kakao_tid", data.tid);
+        sessionStorage.setItem("partner_order_id", requestBody.partnerOrderId);
+        sessionStorage.setItem("partner_user_id", requestBody.partnerUserId);
+        window.open(data.next_redirect_pc_url, "_blank", "width=500,height=700");
+      } else {
+        alert("결제창 생성 실패: " + (data.message || ""));
+      }
+    } catch (e) {
+      alert("결제 요청 중 오류 발생");
+    }
+  };
+
+  // 장바구니 추가 함수
+  const handleAddToCart = async () => {
+    // TODO: 실제 로그인 유저ID로 대체 필요
+    const userId = 1;
+    const goodsId = selected.key; // 실제 goodsId로 대체 필요
+    const quantityValue = quantity;
+    try {
+      const res = await fetch("http://localhost:8080/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: 0,
+          goodsId: 0,
+          quantity: Number(quantity)
+        })
+      });
+      const data = await res.json();
+      if (data.cartId) {
+        sessionStorage.setItem("cart_id", data.cartId);
+        alert("장바구니에 추가되었습니다!");
+      } else {
+        alert("장바구니 추가 실패: " + (data.message || ""));
+      }
+    } catch (e) {
+      alert("장바구니 추가 중 오류 발생");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <Navbar />
@@ -404,9 +463,19 @@ export default function GoodsMaker() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={handleOrder}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기
+                </motion.button>
+                <motion.button
+                  className="w-full bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors duration-300"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart className="w-5 h-5 inline mr-2" />
+                  장바구니에 추가
                 </motion.button>
                 <motion.button
                   className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
