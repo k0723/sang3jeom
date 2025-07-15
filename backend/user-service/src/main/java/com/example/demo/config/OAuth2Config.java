@@ -10,15 +10,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OAuth2Config {
 
-@Bean
-public CustomOAuth2UserService customOAuth2UserService(UserRepository userRepo) {
-    return new CustomOAuth2UserService(userRepo);
-}
-
-@Bean
-public OAuth2SuccessHandler oauth2SuccessHandler(JwtTokenProvider jwtProvider,
-                                                  UserRepository userRepo) {
-    return new OAuth2SuccessHandler(jwtProvider, userRepo);
-}
-
+    @Bean
+    public CustomOAuth2UserService customOAuth2UserService(UserRepository userRepo) {
+        return new CustomOAuth2UserService(userRepo);
+    }
 }

@@ -1,6 +1,6 @@
 package com.example.demo.util;
 
-import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.LoginRequestDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -45,7 +45,7 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
         if (contentType != null && contentType.toLowerCase().contains(MediaType.APPLICATION_JSON_VALUE)) {
             System.out.println("[DEBUG] JSON 분기 진입");
             try (ServletInputStream inputStream = request.getInputStream()) {
-                LoginRequest creds = mapper.readValue(inputStream, LoginRequest.class);
+                LoginRequestDTO creds = mapper.readValue(inputStream, LoginRequestDTO.class);
                 System.out.println("[DEBUG] parsed email=" + creds.getEmail() + ", password=" + creds.getPassword());
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(

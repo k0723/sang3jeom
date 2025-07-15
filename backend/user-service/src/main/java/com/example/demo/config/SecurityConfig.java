@@ -35,7 +35,9 @@ public class SecurityConfig {
                                               OAuth2SuccessHandler successHandler) throws Exception {
     http
       // ★ 이 체인에서 처리할 URL 패턴을 한정
-      .securityMatcher("/oauth2/authorization/**", "/login/oauth2/code/**", "/error")
+      .securityMatcher("/oauth2/**",
+                       "/oauth2/redirection/*",
+                       "/error")
 
       .csrf(csrf -> csrf.disable())
       // ★ OAuth2 flow 는 세션이 필요하므로 IF_REQUIRED
@@ -51,12 +53,12 @@ public class SecurityConfig {
         // ★ 인가 요청 기본 URI
         .authorizationEndpoint(ae -> ae.baseUri("/oauth2/authorization"))
         // ★ 콜백 URI 패턴
-        .redirectionEndpoint(re -> re.baseUri("/login/oauth2/code/*"))
+        .redirectionEndpoint(re -> re.baseUri("/oauth2/redirection/*"))
 
         .userInfoEndpoint(ui -> ui.userService(userService))
         .successHandler(successHandler)
         // ★ 로그인 실패 시 리다이렉트할 URL
-        .failureUrl("/login?error")
+        .failureUrl("/oauth2/authorization/google?error")
       );
     return http.build();
   }
@@ -86,11 +88,20 @@ public class SecurityConfig {
       .authorizeHttpRequests(auth -> auth
         // JWT 로그인·회원가입, OAuth2 시작·콜백, 스웨거 등은 열어두기
         .requestMatchers(
-          "/api/auth/**",
-          "/api/oauth2/**",
-          "/oauth2/authorization/**",
-          "/login/oauth2/code/**",
-          "/swagger-ui/**", "/v3/api-docs/**", "/actuator/**"
+          "/signup",             // 일반(폼) 회원가입
+          "/login",              // 일반(폼) 로그인
+          "/api/auth/register",  // 만약 이 경로를 사용 중이라면
+          "/api/auth/login",     // 만약 이 경로를 사용 중이라면
+
+          // OAuth2 흐름 시작·콜백
+          "/oauth2",
+          "/oauth2/redirection",
+          "/oauth2/redirection/*", 
+
+          // Swagger, OpenAPI, Actuator
+          "/swagger-ui/**",
+          "/v3/api-docs/**",
+          "/actuator/**"
         ).permitAll()
 
         // 그 외는 모두 인증 필요

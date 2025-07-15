@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   CheckCircle
 } from 'lucide-react';
+import axios from 'axios';
 import Navbar from '../components/Navbar';
 
 const Signup = () => {
@@ -46,29 +47,29 @@ const Signup = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // TODO: 실제 회원가입 로직 구현
-    setTimeout(() => {
-      setIsLoading(false);
-      // 회원가입 성공 후 홈으로 이동
-      window.location.href = '/';
-    }, 2000);
+  e.preventDefault();
+  setIsLoading(true);
+
+  const payload = {
+    name: formData.name,
+    email: formData.email,
+    password: formData.password,
+    phone: formData.phone,
+    marketing: agreements.marketing,
   };
 
-  const isFormValid = () => {
-    return (
-      formData.name &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword &&
-      formData.phone &&
-      agreements.terms &&
-      agreements.privacy &&
-      formData.password === formData.confirmPassword
-    );
-  };
+  try {
+    const res = await axios.post('/api/auth/register', payload);
+    // res.data 예: { token: '...', userId: 123 }
+    localStorage.setItem('token', res.data.token);
+    window.location.href = '/';
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.message || '회원가입에 실패했습니다');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">

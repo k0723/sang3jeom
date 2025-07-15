@@ -5,24 +5,26 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.core.context.SecurityContextHolder;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 
+/**
+ * 요청마다 JWT 토큰을 확인하여 유효하면 SecurityContext에 Authentication 객체를 세팅합니다.
+ */
+@Component
+@RequiredArgsConstructor
 public class JwtTokenFilter extends OncePerRequestFilter {
 
-    // 필드 이름을 jwtProvider로 통일
     private final JwtTokenProvider jwtProvider;
-
-    public JwtTokenFilter(JwtTokenProvider jwtProvider) {
-        this.jwtProvider = jwtProvider;
-    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // 로그인·회원가입 요청은 필터 건너뛰기
+        // 로그인·회원가입 API는 JWT 검사 필터를 건너뜀
         return path.startsWith("/api/auth/login")
             || path.startsWith("/api/auth/register");
     }
@@ -32,11 +34,11 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
-        // resolveToken 메서드 추가 후 호출 가능
+
         String token = jwtProvider.resolveToken(request);
         if (token != null && jwtProvider.validateToken(token)) {
-            var auth = jwtProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            var authentication = jwtProvider.getAuthentication(token);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         filterChain.doFilter(request, response);
     }

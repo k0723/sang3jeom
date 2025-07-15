@@ -1,6 +1,6 @@
 package com.example.demo.util;
 
-import com.example.demo.domain.User;
+import com.example.demo.domain.UserEntity;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.OAuth2UserAdapter;
 import org.springframework.security.core.GrantedAuthority;
@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.Collections;
 import java.util.List;
 
@@ -32,18 +33,18 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         OAuth2User oauthUser = new DefaultOAuth2UserService().loadUser(userRequest);
 
         // (생략) 기존 사용자 조회/저장 로직
-        User userEntity = userRepo.findByEmail(oauthUser.getAttribute("email"))
+        UserEntity userEntity = userRepo.findByEmail(oauthUser.getAttribute("email"))
             .orElseGet(() -> {
-                User newUser = new User();
-                newUser.setEmail(oauthUser.getAttribute("email"));
-                newUser.setPassword("");
-                newUser.setName(oauthUser.getAttribute("name"));
+                UserEntity newUser = new UserEntity();
+                newUser.setEmail( Objects.toString(oauthUser.getAttribute("email"), "") );
+                newUser.setPasswordHash("");                   // UserEntity 필드명이 passwordHash라면
+                newUser.setName( Objects.toString(oauthUser.getAttribute("name"), "") );
                 newUser.setRoles(false);
                 return userRepo.save(newUser);
             });
 
         List<GrantedAuthority> authorities = Collections.singletonList(
-            new SimpleGrantedAuthority(userEntity.isRoles() ? "ROLE_ADMIN" : "ROLE_USER")
+            new SimpleGrantedAuthority( userEntity.isRoles()    ? "ROLE_ADMIN" : "ROLE_USER")
         );
 
         return new OAuth2UserAdapter(oauthUser, authorities);

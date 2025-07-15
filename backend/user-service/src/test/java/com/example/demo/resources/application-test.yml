@@ -39,7 +39,7 @@ spring:
               - openid
               - profile
               - email
-            redirect-uri:  http://localhost:8080/login/oauth2/code/google
+            redirect-uri:  http://localhost:8080/oauth2/redirection/{registrationId}
 
 jwt:
   secret:        ${JWT_SECRET}

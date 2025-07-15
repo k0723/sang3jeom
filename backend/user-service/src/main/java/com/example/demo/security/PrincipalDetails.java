@@ -1,32 +1,40 @@
 package com.example.demo.security;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
+
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
-import java.util.Collection;      // ← 추가
-import java.util.Collections;     // ← 추가
 
 /**
  * JWT 로그인(Username/Password)와 OAuth2 로그인을 모두 지원하는
  * SecurityContext의 Principal 어댑터.
  */
+@AllArgsConstructor
+@Getter
 public class PrincipalDetails implements OAuth2User, UserDetails {
-    private final UserDetails userDetails;     // DomainUserDetails 또는 InMemoryUserDetails
-    private final OAuth2User oauth2User;       // OAuth2UserAdapter or null
 
-    public PrincipalDetails(UserDetails userDetails) {
-        this.userDetails = userDetails;
-        this.oauth2User = null;
-    }
+    /**
+     * 내부적으로 인증된 사용자 정보:
+     * - 일반 로그인 시 DomainUserDetails
+     * - OAuth2 로그인 시 OAuth2UserAdapter
+     */
+    private final UserDetails userDetails;
 
-    public PrincipalDetails(OAuth2User oauth2User,
-                            UserDetails userDetails) {
-        this.oauth2User = oauth2User;
-        this.userDetails = userDetails;
-    }
+    /**
+     * OAuth2 로그인 시에만 non-null.
+     */
+    private final OAuth2User oauth2User;
+
+    /**
+     * 일반(폼) 로그인 전용 생성자.
+     */
 
     // --- UserDetails 메서드 위임 ---
     @Override public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -56,7 +64,7 @@ public class PrincipalDetails implements OAuth2User, UserDetails {
     public Map<String, Object> getAttributes() {
         return oauth2User != null
             ? oauth2User.getAttributes()
-            : Map.of();
+            : Collections.emptyMap();
     }
 
     @Override

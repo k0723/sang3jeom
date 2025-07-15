@@ -1,43 +1,59 @@
 package com.example.demo.security;
 
-import java.util.Collections;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import com.example.demo.domain.User;
+import com.example.demo.domain.UserEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;      // ← 추가
-import java.util.Collections;     // ← 추가
+import java.util.Collection;
+import java.util.List;
 
-/**
- * 도메인 User 엔티티를 Spring Security의 UserDetails로 어댑터.
- */
+@RequiredArgsConstructor
 public class DomainUserDetails implements UserDetails {
-    private final User user;
 
-    public DomainUserDetails(User user) {
-        this.user = user;
-    }
+    private final UserEntity user;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        // roles가 true면 ADMIN, 아니면 USER
         String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
-        return Collections.singletonList(new SimpleGrantedAuthority(role));
+        return List.of(new SimpleGrantedAuthority(role));
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        // passwordHash 필드 사용
+        return user.getPasswordHash();
     }
 
     @Override
     public String getUsername() {
+        // 로그인 식별자로 쓰는 username 필드
         return user.getUsername();
     }
 
-    @Override public boolean isAccountNonExpired()     { return true; }
-    @Override public boolean isAccountNonLocked()      { return true; }
-    @Override public boolean isCredentialsNonExpired() { return true; }
-    @Override public boolean isEnabled()               { return true; }
+    @Override
+    public boolean isAccountNonExpired() {
+        // 필요시 로직 추가
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        // 필요시 로직 추가
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        // 필요시 로직 추가
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        // 필요시 가입취소 등 로직 추가
+        return true;
+    }
 }

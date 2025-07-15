@@ -1,11 +1,10 @@
-// src/main/java/com/example/demo/service/UserService.java
 package com.example.demo.service;
 
-import com.example.demo.domain.User;
+import com.example.demo.domain.UserEntity;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.dto.UserCreateRequest;
+import com.example.demo.dto.UserCreateRequestDTO;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import com.example.demo.dto.UserDto;
+import com.example.demo.dto.UserDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,7 +23,7 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public UserDto create(UserCreateRequest req) {
+    public UserDTO create(UserCreateRequestDTO req) {
         // 1) username 중복 검사
         if (repo.existsByUsername(req.getUsername())) {
             throw new ResponseStatusException(
@@ -40,38 +39,38 @@ public class UserService {
             );
         }
 
-        User user = req.toEntity();
+        UserEntity user = req.toEntity();
 
         String rawPassword = req.getPassword();               // DTO에서 원문 비밀번호 가져오기
         String encodedPassword = passwordEncoder.encode(rawPassword);
         user.setPasswordHash(encodedPassword);  
 
         // 3) 저장
-        User saved = repo.save(user);
-        return UserDto.fromEntity(saved);
+        UserEntity saved = repo.save(user);
+        return UserDTO.fromEntity(saved);
     }
 
-    public List<UserDto> findAll() {
+    public List<UserDTO> findAll() {
         return repo.findAll()
                    .stream()
-                   .map(UserDto::fromEntity)
+                   .map(UserDTO::fromEntity)
                    .toList();
     }
 
-    public UserDto findById(Long id) {
-        User u = repo.findById(id)
+    public UserDTO findById(Long id) {
+        UserEntity u = repo.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + id));
-        return UserDto.fromEntity(u);
+        return UserDTO.fromEntity(u);
     }
 
-    public UserDto update(Long id, UserCreateRequest req) {
-        User u = repo.findById(id)
+    public UserDTO update(Long id, UserCreateRequestDTO req) {
+        UserEntity u = repo.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + id));
 
         u.setUsername(req.getUsername());
         u.setEmail(req.getEmail());
-        User saved = repo.save(u);
-        return UserDto.fromEntity(saved);
+        UserEntity saved = repo.save(u);
+        return UserDTO.fromEntity(saved);
     }
 
     public void delete(Long id) {
@@ -80,4 +79,4 @@ public class UserService {
         }
         repo.deleteById(id);
     }
-}
+} 
