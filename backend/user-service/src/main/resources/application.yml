@@ -2,12 +2,12 @@
 
 spring:
   config:
-    import: optional:dotenv
+    import: "optional:dotenv:"
   application:
     name: demo
 
   datasource:
-    url: ${DATASOURCE_URL:jdbc:mysql://localhost:3306/database_development?useSSL=false&serverTimezone=Asia/Seoul}
+    url: ${DATASOURCE_URL:jdbc:mysql://localhost:3306/fastapidb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
 
@@ -43,7 +43,7 @@ spring:
 
 jwt:
   secret:        ${JWT_SECRET}
-  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  expiration-ms: ${JWT_EXPIRATION_MS}
 
 logging:
   level:

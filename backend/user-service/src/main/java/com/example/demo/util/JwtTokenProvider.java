@@ -15,9 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret}")
+    @Value("${JWT_SECRET}")
     private String secret;
-    @Value("${jwt.expiration-ms}")
+    @Value("${JWT_EXPIRATION_MS}")
     private long expiryMs;
 
     private final UserDetailsService userDetailsService;
