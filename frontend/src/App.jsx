@@ -12,6 +12,8 @@ import MyPage from "./pages/MyPage";
 import CharacterMaker from './pages/CharacterMaker';
 import PaySuccess from "./pages/PaySuccess";
 import { useState } from "react";
+import OrderPage from "./pages/OrderPage";
+import OrderComplete from "./pages/OrderComplete";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
@@ -24,6 +26,8 @@ function App() {
         <Route path="/goods-maker" element={<GoodsMaker />} />
         {/* <Route path="/cart" element={<Cart />} /> */}
         {/* <Route path="/order" element={<Order />} /> */}
+        <Route path="/order" element={<OrderPage />} />
+        <Route path="/order-complete" element={<OrderComplete />} />
         <Route path="/mypage" element={<MyPage />} />
         {/* <Route path="/ranking" element={<Ranking />} /> */}
         {/* <Route path="/admin" element={<Admin />} /> */}

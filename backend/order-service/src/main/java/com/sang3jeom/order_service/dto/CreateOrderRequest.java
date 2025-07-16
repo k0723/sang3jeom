@@ -11,4 +11,5 @@ public class CreateOrderRequest {
     private Integer quantity;  // 즉시구매용 (optional)
     private Integer userId;    // 즉시구매용 (optional, 추후 토큰에서 추출)
     private String memo;       // optional
+    private String address;    // 배송지 주소
 }

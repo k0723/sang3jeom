@@ -18,7 +18,8 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<CreateOrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
-        return ResponseEntity.ok(orderService.createOrder(request));
+        return ResponseEntity.ok(
+                orderService.createOrder(request));
     }
 
     @PostMapping("/cart")

@@ -10,4 +10,5 @@ public class DirectOrderRequest {
     private Integer quantity;
     private Integer userId;
     private String memo; // optional
+    private String address; // 배송지 주소
 } 

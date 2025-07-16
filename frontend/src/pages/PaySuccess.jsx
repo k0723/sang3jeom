@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 export default function PaySuccess() {
@@ -6,6 +6,7 @@ export default function PaySuccess() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("processing");
   const [message, setMessage] = useState("");
+  const navigatedRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -13,10 +14,16 @@ export default function PaySuccess() {
     const tid = sessionStorage.getItem("kakao_tid");
     const partner_order_id = sessionStorage.getItem("partner_order_id");
     const partner_user_id = sessionStorage.getItem("partner_user_id");
-    const cartId = sessionStorage.getItem("cart_id"); // 주문 생성에 필요 (handleOrder에서 저장 필요)
+    const cartId = sessionStorage.getItem("cart_id");
     const goodsId = sessionStorage.getItem("goods_id");
     const quantity = sessionStorage.getItem("quantity");
+    const address = sessionStorage.getItem("address");
+    const memo = sessionStorage.getItem("memo");
     const userId = sessionStorage.getItem("user_id");
+    const receiver = sessionStorage.getItem("receiver") || "홍길동";
+    const phone = sessionStorage.getItem("phone") || "010-1234-5678";
+    const email = sessionStorage.getItem("email") || "seul1234@gmail.com";
+    const amount = sessionStorage.getItem("amount");
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
       fetch("http://localhost:8080/pay/approve", {
@@ -31,30 +38,45 @@ export default function PaySuccess() {
       })
         .then(res => res.json())
         .then(data => {
-          // 결제 승인 성공 후 즉시주문 생성
           fetch("http://localhost:8080/orders/direct", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               goodsId: Number(goodsId),
               quantity: Number(quantity),
-              userId: Number(userId)
+              userId: Number(userId),
+              address: address,
+              memo: memo
             })
           })
             .then(res => res.json())
             .then(orderData => {
-              setStatus("success");
-              setMessage("결제 및 주문이 성공적으로 완료되었습니다! 주문번호: " + orderData.orderId);
-              // 필요시 주문완료 페이지로 이동: setTimeout(() => navigate("/mypage"), 2000);
+              if (!navigatedRef.current) {
+                navigatedRef.current = true;
+                navigate("/order-complete", {
+                  state: {
+                    orderId: orderData.orderId || partner_order_id,
+                    receiver,
+                    phone,
+                    address,
+                    email,
+                    amount: amount ? Number(amount) : 0
+                  }
+                });
+              }
             })
             .catch(() => {
-              setStatus("error");
-              setMessage("주문 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.");
+              if (!navigatedRef.current) {
+                setStatus("error");
+                setMessage("주문 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.");
+              }
             });
         })
         .catch(() => {
-          setStatus("error");
-          setMessage("결제 승인 중 오류가 발생했습니다. 다시 시도해주세요.");
+          if (!navigatedRef.current) {
+            setStatus("error");
+            setMessage("결제 승인 중 오류가 발생했습니다. 다시 시도해주세요.");
+          }
         });
     } else {
       setStatus("error");
@@ -62,12 +84,22 @@ export default function PaySuccess() {
     }
   }, [location, navigate]);
 
+  // navigate가 실행되면 컴포넌트가 곧 언마운트되므로, 에러 메시지가 잠깐 보이는 현상 방지
+  if (status === "processing") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          결제 승인 및 주문 생성 처리 중입니다...
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태만 메시지 노출
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-        {status === "processing" && <div>결제 승인 및 주문 생성 처리 중입니다...</div>}
-        {status === "success" && <div className="text-green-600 font-bold text-lg">{message}</div>}
-        {status === "error" && <div className="text-red-600 font-bold text-lg">{message}</div>}
+        <div className="text-red-600 font-bold text-lg">{message}</div>
       </div>
     </div>
   );

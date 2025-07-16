@@ -25,6 +25,8 @@ public class OrderService {
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
         Order order = new Order();
         order.setStatus("PENDING");
+        order.setAddress(request.getAddress());
+        order.setMemo(request.getMemo());
 
         if (request.getCartId() != null) {
             // 장바구니 기반 주문
@@ -64,6 +66,7 @@ public class OrderService {
         Order order = new Order();
         order.setUserId(cart.getUserId());
         order.setStatus("PENDING");
+        order.setAddress(request.getAddress());
         orderRepository.save(order);
 
         OrderItem item = new OrderItem();
@@ -81,6 +84,8 @@ public class OrderService {
         Order order = new Order();
         order.setUserId(request.getUserId());
         order.setStatus("PENDING");
+        order.setAddress(request.getAddress());
+        order.setMemo(request.getMemo());
         orderRepository.save(order);
 
         OrderItem item = new OrderItem();
