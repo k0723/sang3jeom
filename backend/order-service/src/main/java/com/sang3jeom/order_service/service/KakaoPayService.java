@@ -23,7 +23,7 @@ public class KakaoPayService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${kakao.secret-key}")
+    @Value("${kakao.secret-key:${KAKAO_SECRET_KEY:}}")
     private String kakaoSecretKey;
 
     public KakaoPayReadyResponse readyToPay(KakaoPayReadyRequest request) {
