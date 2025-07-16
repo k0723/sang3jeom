@@ -27,6 +27,12 @@ public class UserCreateRequestDTO {
     @NotBlank(message = "비밀번호를 입력해주세요")
     private String password;
 
+    @NotBlank(message = "비밀번호를 입력해주세요")
+    private String confirmPassword;
+
+    @NotBlank(message = "전화번호를 입력해주세요")
+    private String phone;
+
     /**
      * 이 DTO를 엔티티로 변환합니다.
      * 실제 저장 시엔 서비스 계층에서 password 해싱 로직을 적용하세요.
@@ -39,6 +45,7 @@ public class UserCreateRequestDTO {
                    .roles(false)                 // 기본 권한 설정
                    .name(this.username)          // 닉네임 초기값으로 username 사용
                    .profileImageUrl(null)        // 기본 프로필 없음
+                   .phone(this.phone)
                    .build();
     }
 }

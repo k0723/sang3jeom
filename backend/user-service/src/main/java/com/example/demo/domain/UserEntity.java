@@ -41,6 +41,9 @@ public class UserEntity {
     // 프로필 이미지
     private String profileImageUrl;
 
+    //사용자 전화번호
+    private String phone;
+
     // 가입일시
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

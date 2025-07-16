@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { 
   Mail, 
   Lock, 
@@ -16,17 +17,29 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     // TODO: 실제 로그인 로직 구현
-    setTimeout(() => {
-      setIsLoading(false);
-      // 로그인 성공 후 홈으로 이동
+    try {
+      const res = await axios.post('http://localhost:8080/login', {
+        email,
+        password
+      });
+      const token = res.data.token;
+      console.log(res.data); // 서버에서 반환된 JWT 토큰
+      sessionStorage.setItem('jwt',token);
       window.location.href = '/';
-    }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert('로그인 실패: ' + err.response?.data?.message || err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
