@@ -1,10 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import PostUploadModal from "../components/PostUploadModal";
 
 export default function OrderComplete() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [showModal, setShowModal] = useState(false);
   // location.state에서 필요한 정보 추출 (예시)
   const {
     orderId = "2020090519683953",
@@ -12,8 +15,15 @@ export default function OrderComplete() {
     phone = "010-1234-5678",
     address = "서울특별시 강남구 강남동 111-1번지 111호",
     email = "seul1234@gmail.com",
-    amount = 64440
+    amount = 64440,
+    image = null
   } = location.state || {};
+
+  // 게시글 업로드 후 커뮤니티로 이동
+  const handlePost = (post) => {
+    // TODO: 실제 업로드 API 연동
+    navigate("/community", { state: { newPost: post } });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -49,7 +59,7 @@ export default function OrderComplete() {
           </button>
           <button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mb-8"
-            onClick={() => alert('굿즈 자랑하기 기능은 준비중입니다!')}
+            onClick={() => setShowModal(true)}
           >
             굿즈 자랑하기
           </button>
@@ -78,6 +88,7 @@ export default function OrderComplete() {
           </div>
         </div>
       </div>
+      <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} />
     </div>
   );
 } 

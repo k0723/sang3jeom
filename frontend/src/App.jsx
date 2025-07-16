@@ -14,6 +14,7 @@ import PaySuccess from "./pages/PaySuccess";
 import { useState } from "react";
 import OrderPage from "./pages/OrderPage";
 import OrderComplete from "./pages/OrderComplete";
+import Community from "./pages/Community";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
@@ -34,6 +35,7 @@ function App() {
         {/* <Route path="/inquiry" element={<Inquiry />} /> */}
         <Route path="/character-maker" element={<CharacterMaker />} />
         <Route path="/pay/success" element={<PaySuccess />} />
+        <Route path="/community" element={<Community />} />
       </Routes>
     </BrowserRouter>
   );

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Menu, X, User, ShoppingCart, Heart, LogIn, UserPlus, Home, Palette, ChevronDown, LogOut
+  Menu, X, User, ShoppingCart, Heart, LogIn, UserPlus, Home, Palette, ChevronDown, LogOut, Users
 } from 'lucide-react';
 import Modal from './Modal';
+import reactImg from '../assets/react.svg';
 
 const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,6 +36,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
     { name: '홈', path: '/', icon: Home },
     { name: 'AI 캐릭터', path: '/character-maker', icon: Palette },
     { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart },
+    { name: '상상공간', path: '/community', icon: Users },
   ];
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
@@ -81,7 +83,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                   group
                 `}
               >
-                <item.icon className="w-5 h-5 opacity-70" />
+                {item.icon && <item.icon className="w-5 h-5 opacity-70" />}
                 <span>{item.name}</span>
                 <span className={`absolute left-1/2 -bottom-1 w-6 h-1 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 opacity-0 group-hover:opacity-80 transition-all duration-200 ${location.pathname === item.path ? 'opacity-100' : ''}`}></span>
               </Link>
@@ -181,7 +183,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                         : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
+                    {item.icon && <item.icon className="w-5 h-5" />}
                     <span>{item.name}</span>
                   </Link>
                 ))}
