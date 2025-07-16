@@ -73,6 +73,14 @@ public class SecurityConfig {
                                                  AuthenticationManager authManager,
                                                  JwtTokenProvider jwtProvider,
                                                  JwtConfig jwtConfig) throws Exception {
+
+    // JwtLoginFilter 인스턴스 생성 (여기에서 변수를 선언)
+    JwtLoginFilter jwtLoginFilter = new JwtLoginFilter(
+        authManager,
+        jwtConfig.jwtSuccessHandler(),
+        new SimpleUrlAuthenticationFailureHandler()
+    );
+
     http
       .csrf(csrf -> csrf.disable())
       // ★ JWT 체인은 무상태(stateless)
@@ -109,16 +117,8 @@ public class SecurityConfig {
       )
 
       // ★ JWT 폼 로그인 필터 (Username/Password → JWT 발급)
-      .addFilterBefore(
-        new JwtLoginFilter(authManager, jwtConfig.jwtSuccessHandler(),
-                            new SimpleUrlAuthenticationFailureHandler()),
-        UsernamePasswordAuthenticationFilter.class
-      )
-      // ★ JWT 토큰 검증 필터
-      .addFilterAfter(
-        new JwtTokenFilter(jwtProvider),
-        UsernamePasswordAuthenticationFilter.class
-      );
+      .addFilterBefore(jwtLoginFilter, UsernamePasswordAuthenticationFilter.class)
+      .addFilterAfter(new JwtTokenFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }

@@ -20,7 +20,6 @@ import java.util.Collections;
 /**
  * JSON 바디로 로그인 요청을 받을 수 있도록 UsernamePasswordAuthenticationFilter를 확장.
  */
-@Component
 @RequiredArgsConstructor
 public class JsonUsernamePasswordAuthenticationFilter
         extends UsernamePasswordAuthenticationFilter {

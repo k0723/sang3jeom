@@ -42,6 +42,6 @@ public class UserEntity {
     private String profileImageUrl;
 
     // 가입일시
-    @Column(nullable = false, updatable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

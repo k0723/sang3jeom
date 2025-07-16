@@ -60,7 +60,7 @@ public class AuthService {
         String email = oauthUser.getAttribute("email");
         UserEntity user = userRepo.findByEmail(email)
             .orElseGet(() -> {
-                UserEntity newUser = newUser.builder()
+                UserEntity newUser = UserEntity.builder()
                     .email(email)
                     .name(oauthUser.getAttribute("name"))
                     .roles(false)

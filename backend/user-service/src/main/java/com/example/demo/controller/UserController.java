@@ -37,18 +37,6 @@ public class UserController {
 
     private final UserService svc;
 
-    @Operation(summary = "사용자 생성", description = "새 사용자를 등록합니다.")
-    @ApiResponse(responseCode = "201", description = "생성 성공")
-    @PostMapping
-    public ResponseEntity<UserDTO> createUser(
-            @RequestBody @Valid UserCreateRequestDTO req) {
-        log.info("Create request: {}", req);
-        UserEntity created = svc.create(req);
-        return ResponseEntity
-            .created(URI.create("/users/" + created.getId()))
-            .body(created);
-    }
-
     @Operation(summary = "모든 사용자 조회")
     @GetMapping
     public ResponseEntity<List<UserDTO>> listUsers() {
