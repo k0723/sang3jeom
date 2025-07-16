@@ -11,7 +11,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef();
-
+  
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll);

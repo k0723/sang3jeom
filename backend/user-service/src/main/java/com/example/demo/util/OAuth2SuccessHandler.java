@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.web.util.UriComponentsBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -53,9 +54,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // 3) JWT 토큰 생성
         String token = jwtProvider.createToken(email, user.isRoles());
 
+        String targetUrl = UriComponentsBuilder
+        .fromUriString("http://localhost:5173/oauth2/redirect")
+        .queryParam("token", token)
+        .build()
+        .toUriString();
+
         // 4) JSON 응답
         response.setStatus(HttpStatus.OK.value());
-        response.setContentType("application/json");
-        response.getWriter().write("{\"token\":\"" + token + "\"}");
+        response.sendRedirect(targetUrl);
     }
 }

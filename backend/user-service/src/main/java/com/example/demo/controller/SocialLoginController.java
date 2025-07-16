@@ -19,8 +19,4 @@ public class SocialLoginController {
      * 프론트엔드에서 이 API를 호출하면
      * 바로 Spring Security의 OAuth2 인가 시작 URL로 Redirect 됩니다.
      */
-    @GetMapping("/oauth2/authorization/google")
-    public void redirectToGoogle(HttpServletResponse response) throws IOException {
-        response.sendRedirect("/oauth2/authorization/google");
-    }
 }
