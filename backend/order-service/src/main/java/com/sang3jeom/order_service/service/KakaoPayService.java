@@ -41,7 +41,7 @@ public class KakaoPayService {
         body.put("quantity", request.getQuantity()); // Integer
         body.put("total_amount", request.getTotalAmount()); // Integer
         body.put("tax_free_amount", request.getTaxFreeAmount()); // Integer
-        body.put("approval_url", "http://localhost:8080/pay/success");
+        body.put("approval_url", "http://localhost:5173/pay/success");
         body.put("cancel_url", "http://localhost:8080/pay/cancel");
         body.put("fail_url", "http://localhost:8080/pay/fail");
 
@@ -60,32 +60,24 @@ public class KakaoPayService {
         }
     }
 
-    public KakaoPayApproveResponse approvePayment(KakaoPayApproveRequest request) {
+    private static final String KAKAO_APPROVE_URL = "https://open-api.kakaopay.com/online/v1/payment/approve";
+
+    public ResponseEntity<String> approvePayment(KakaoPayApproveRequest requestDto) {
+        RestTemplate restTemplate = new RestTemplate();
+
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "SECRET_KEY " + kakaoSecretKey);
-        headers.set("Referer", "http://localhost:8080");
 
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("cid", "TC0ONETIME");
-        params.add("tid", request.getTid());
-        params.add("partner_order_id", request.getPartner_order_id());
-        params.add("partner_user_id", request.getPartner_user_id());
-        params.add("pg_token", request.getPg_token());
-        System.out.println(params);
-        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(params, headers);
+        Map<String, Object> body = new HashMap<>();
+        body.put("cid", "TC0ONETIME");
+        body.put("tid", requestDto.getTid());
+        body.put("partner_order_id", requestDto.getPartner_order_id());
+        body.put("partner_user_id", requestDto.getPartner_user_id());
+        body.put("pg_token", requestDto.getPg_token());
 
-        try {
-            ResponseEntity<KakaoPayApproveResponse> response = restTemplate.postForEntity(
-                    "https://open-api.kakaopay.com/online/v1/payment/approve",
-                    requestEntity,
-                    KakaoPayApproveResponse.class
-            );
-            return response.getBody();
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.out.println("결제 승인 실패: " + e.getResponseBodyAsString());
-            throw e;
-        }
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        return restTemplate.postForEntity(KAKAO_APPROVE_URL, entity, String.class);
     }
-
 }

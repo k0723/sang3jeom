@@ -22,21 +22,14 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/success")
-    public ResponseEntity<KakaoPayApproveResponse> paySuccess(
-            @RequestParam("pg_token") String pgToken,
-            @RequestParam("tid") String tid,
-            @RequestParam("partner_order_id") String orderId,
-            @RequestParam("partner_user_id") String userId
-    ) {
-        KakaoPayApproveRequest request = new KakaoPayApproveRequest();
-        request.setPg_token(pgToken);
-        request.setTid(tid);
-        request.setPartner_order_id(orderId);
-        request.setPartner_user_id(userId);
-        System.out.println(request);
-        KakaoPayApproveResponse response = kakaoPayService.approvePayment(request);
-        return ResponseEntity.ok(response);
+    @PostMapping("/approve")
+    public ResponseEntity<?> approvePayment(@RequestBody KakaoPayApproveRequest requestDto) {
+        try {
+            ResponseEntity<String> response = kakaoPayService.approvePayment(requestDto);
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
     }
 
     @GetMapping("/cancel")
