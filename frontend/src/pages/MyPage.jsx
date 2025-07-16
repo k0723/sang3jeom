@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { 
   User, 
   ShoppingBag, 
@@ -16,19 +17,17 @@ import {
 import Navbar from '../components/Navbar';
 
 const MyPage = () => {
+  const [user, setUser] = useState(null);
+
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
 
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [createdat, setCreatedAt] = useState('');
+
   // 임시 사용자 데이터
-  const user = {
-    name: '홍길동',
-    email: 'hong@example.com',
-    phone: '010-1234-5678',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2024.01.15',
-    totalOrders: 12,
-    totalSpent: 150000
-  };
 
   const orders = [
     {
@@ -93,6 +92,69 @@ const MyPage = () => {
       default: return Package;
     }
   };
+
+  function parseJwt(token) {
+    try {
+      const base64Payload = token.split('.')[1]; 
+      const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decodeURIComponent(
+        jsonPayload
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      ));
+    } catch (e) {
+      console.error('Invalid JWT:', e);
+      return null;
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      const token = localStorage.getItem('jwt')
+      const payload = parseJwt(token);
+      const id = payload.id;
+      const res = await axios.patch(
+        `http://localhost:8080/users/${id}`,
+        { name, email, phone },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      
+      setUser(res.data);
+
+      setIsEditing(false)
+      alert('프로필이 성공적으로 수정되었습니다.')
+    } catch (err) {
+      console.error(err)
+      alert('프로필 수정에 실패했습니다: ' + err.response?.data?.message || err.message)
+    }
+  };
+
+  useEffect(() => {
+    const handleUserInfo = async () => {
+      const token = localStorage.getItem('jwt')
+      const payload = parseJwt(token);
+      const id = payload.id;
+      try {
+        const res = await axios.get(`http://localhost:8080/users/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setName(res.data.name);
+        setEmail(res.data.email);
+        setPhone(res.data.phone || '');
+        setCreatedAt(res.data.createdat);
+      } catch (err) {
+        console.error(err);
+        alert('내 정보 조회 실패');
+      }
+    };
+    handleUserInfo();
+  }, []);
+  if (!user) return <div>로딩 중...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -176,7 +238,12 @@ const MyPage = () => {
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">프로필 정보</h2>
                     <button
-                      onClick={() => setIsEditing(!isEditing)}
+                      onClick={() => {
+                        if (isEditing) {
+                          handleSaveProfile();
+                        }
+                        setIsEditing(v => !v);
+                      }}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
                     >
                       <Edit className="w-4 h-4" />
@@ -192,6 +259,7 @@ const MyPage = () => {
                           type="text"
                           defaultValue={user.name}
                           disabled={!isEditing}
+                          onChange={e => setName(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -201,6 +269,7 @@ const MyPage = () => {
                           type="email"
                           defaultValue={user.email}
                           disabled={!isEditing}
+                          onChange={e => setEmail(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -210,6 +279,7 @@ const MyPage = () => {
                           type="tel"
                           defaultValue={user.phone}
                           disabled={!isEditing}
+                          onChange={e => setPhone(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -219,6 +289,7 @@ const MyPage = () => {
                           type="text"
                           defaultValue={user.joinDate}
                           disabled
+                          onChange={e => setCreatedAt(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                         />
                       </div>

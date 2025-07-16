@@ -60,18 +60,20 @@ public class JwtTokenProvider {
         return new UsernamePasswordAuthenticationToken(
             userDetails, "", userDetails.getAuthorities());
     }
-    public String createToken(String username, boolean roles) {
+    public String createToken(String username, boolean roles, Long id) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expiryMs);
 
-        return Jwts.builder()
+        return Jwts.builder() 
                    .setSubject(username)
                    .claim("roles", roles)
+                   .claim("id", id)
                    .setIssuedAt(now)
                    .setExpiration(expiry)
                    .signWith(SignatureAlgorithm.HS512, secret)
                    .compact();
     }
+
     public String resolveToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {
