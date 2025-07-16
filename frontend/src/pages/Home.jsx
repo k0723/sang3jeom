@@ -128,7 +128,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white pt-16">
-      <Navbar />
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-20"></div>
