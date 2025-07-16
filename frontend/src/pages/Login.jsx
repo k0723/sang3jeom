@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { 
   Mail, 
   Lock, 
@@ -11,27 +12,50 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
-const Login = () => {
+const Login = ({ setIsLoggedIn }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     // TODO: 실제 로그인 로직 구현
-    setTimeout(() => {
+    try {
+      const res = await axios.post('http://localhost:8080/login', {
+        email,
+        password
+      });
+      const token = res.data.token;
+      console.log(res.data); // 서버에서 반환된 JWT 토큰
+      sessionStorage.setItem('jwt',token);
+      localStorage.setItem('jwt',token);
+      setIsLoggedIn(true);      // React 상태 업데이트
+      navigate('/', { replace: true }); // SPA 내비게이션
+    } catch (err) {
+      console.error(err);
+      alert('로그인 실패: ' + err.response?.data?.message || err.message);
+    } finally {
       setIsLoading(false);
-      // 로그인 성공 후 홈으로 이동
-      window.location.href = '/';
-    }, 2000);
+    }
+  };
+
+  const googlehandleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    // TODO: 실제 로그인 로직 구현
+    window.location.href = `http://localhost:8080/oauth2/authorization/google`;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <Navbar />
       
       <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
@@ -171,6 +195,7 @@ const Login = () => {
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={googlehandleSubmit}
                 >
                   <span className="sr-only">Google로 로그인</span>
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
