@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 
+<<<<<<< HEAD
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -24,3 +25,17 @@ dist-ssr
 *.sw?
 # .gitignore
 .env
+=======
+# mypy, coverage 등
+.mypy_cache/
+coverage/
+*.cover
+*.py,cover
+.hypothesis/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.env
+>>>>>>> 4010aa4 (Remove .env from Git history and update .gitignore)
