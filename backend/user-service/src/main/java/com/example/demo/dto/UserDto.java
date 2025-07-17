@@ -21,6 +21,7 @@ public class UserDTO {
     private String email;
     private String passwordHash;
     private String name;
+    private String phone;
     private String profileImageUrl;
     private LocalDateTime createdAt;
 
@@ -60,4 +61,5 @@ public class UserDTO {
                          .createdAt(this.createdAt)      // 새로 생성할 때는 null 처리하거나 JPA 기본값 사용
                          .build();
     }
+
 }
