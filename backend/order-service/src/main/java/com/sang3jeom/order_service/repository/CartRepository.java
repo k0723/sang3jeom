@@ -1,6 +1,6 @@
 package com.sang3jeom.order_service.repository;
 
-import com.sang3jeom.order_service.model.Cart;
+import com.sang3jeom.order_service.domain.Cart;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

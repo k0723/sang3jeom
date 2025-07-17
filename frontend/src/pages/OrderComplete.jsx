@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -20,9 +21,23 @@ export default function OrderComplete() {
   } = location.state || {};
 
   // 게시글 업로드 후 커뮤니티로 이동
-  const handlePost = (post) => {
-    // TODO: 실제 업로드 API 연동
-    navigate("/community", { state: { newPost: post } });
+  const handlePost = async (post) => {
+    try {
+      // 테스트용 하드코딩 - 추후 S3 버킷에서 가져올 예정
+      const response = await axios.post("http://localhost:8083/goods-posts", {
+        content: post.content,
+        imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
+        status: "ALL"
+      });
+      
+      console.log("굿즈 게시물 생성 성공:", response.data);
+      
+      // 성공 시 커뮤니티로 이동
+      navigate("/community", { state: { newPost: response.data } });
+    } catch (error) {
+      console.error("굿즈 게시물 생성 실패:", error);
+      alert(error.response?.data?.message || "게시글 업로드에 실패했습니다. 다시 시도해주세요.");
+    }
   };
 
   return (
