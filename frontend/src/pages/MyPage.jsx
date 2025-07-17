@@ -15,8 +15,12 @@ import {
   CheckCircle
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useNavigate } from 'react-router-dom';
 
 const MyPage = () => {
+
+  const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -162,7 +166,6 @@ const MyPage = () => {
         }
       )
       setUser(res.data);
-      console.log('API RESPONSE', res.data);
       alert('프로필이 성공적으로 수정되었습니다.')
     } catch (err) {
       console.error(err);
@@ -170,9 +173,35 @@ const MyPage = () => {
       alert('프로필 수정에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
     finally {
-      console.log('SAVE END before setIsLoading(false)', { isLoading });
       setIsLoading(false);       // 저장 완료 시 로딩 해제
-      console.log('SAVE END after setIsLoading(false)', { isLoading: false });
+    }
+  };
+
+  const handleprofiledelete = async () => {
+    try {
+      
+      console.log('ABOUT TO CALL API');
+      const token = localStorage.getItem('jwt')
+      const payload = parseJwt(token);
+      const id = payload.id;
+      const res = await axios.delete(
+        `http://localhost:8080/users/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      console.log('API RESPONSE', res.data);
+      localStorage.clear();      // 모든 localStorage 데이터 삭제
+      sessionStorage.clear();    // 모든 sessionStorage 데이터 삭제
+
+      // 3) React 상태 동기화
+      //   // App 수준에서 관리 중인 상태라면
+      alert('프로필이 성공적으로 삭제되었습니다.')
+      navigate('/');
+    } catch (err) {
+      alert('프로필 삭제에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
   };
   if (isLoading) {
@@ -434,6 +463,13 @@ const MyPage = () => {
                         <button className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300">
                           <div className="font-medium text-gray-800">개인정보처리방침</div>
                           <div className="text-sm text-gray-600">개인정보 수집 및 이용에 대한 안내</div>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300"
+                          onClick={handleprofiledelete}
+                          >
+                          <div className="font-medium text-gray-800">회원가입 탈퇴</div>
+                          <div className="text-sm text-gray-600">회원탈퇴 시 모든 정보가 사라집니다.</div>
                         </button>
                       </div>
                     </div>

@@ -35,6 +35,8 @@ const Login = ({ setIsLoggedIn }) => {
       console.log(res.data); // 서버에서 반환된 JWT 토큰
       sessionStorage.setItem('jwt',token);
       localStorage.setItem('jwt',token);
+      sessionStorage.setItem('isLoggedIn', true);
+      localStorage.setItem('isLoggedIn', 'true');
       setIsLoggedIn(true);      // React 상태 업데이트
       navigate('/', { replace: true }); // SPA 내비게이션
     } catch (err) {

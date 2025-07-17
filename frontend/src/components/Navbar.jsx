@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
+import { Logout } from '../utils/logout';
 
 const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,13 +42,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    if (typeof setIsLoggedIn === 'function') {
-      setIsLoggedIn(false);
-    }
-    window.location.href = '/login';
-  };
+  const logout = Logout(setIsLoggedIn);
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
@@ -136,7 +131,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                         <Heart className="w-4 h-4" /> 찜한 상품
                       </Link>
                       <div className="border-t my-1" />
-                      <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={handleLogout}>
+                      <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={logout}>
                         <LogOut className="w-4 h-4" /> 로그아웃
                       </button>
                     </motion.div>
