@@ -88,6 +88,7 @@ public class SecurityConfig {
     );
 
     http
+      .securityMatcher("/users/**")
       .cors(cors -> cors.configurationSource(corsConfigurationSource()))
       .csrf(csrf -> csrf.disable())
       // ★ JWT 체인은 무상태(stateless)
@@ -124,8 +125,10 @@ public class SecurityConfig {
       )
 
       // ★ JWT 폼 로그인 필터 (Username/Password → JWT 발급)
-      .addFilterBefore(jwtLoginFilter, UsernamePasswordAuthenticationFilter.class)
-      .addFilterAfter(new JwtTokenFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class);
+      .addFilterBefore(jwtLoginFilter,
+                       UsernamePasswordAuthenticationFilter.class)
+      .addFilterBefore(new JwtTokenFilter(jwtProvider),
+                       UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }

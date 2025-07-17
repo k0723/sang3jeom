@@ -8,6 +8,7 @@ import com.example.demo.service.AuthService;
 import com.example.demo.service.UserService;
 import com.example.demo.util.JwtTokenProvider;
 import com.example.demo.domain.UserEntity;
+import com.example.demo.repository.UserRepository;
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
@@ -38,17 +41,20 @@ public class AuthController {
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtProvider;
+    private final UserRepository userRepo;
 
     public AuthController(
             UserService userService,
             AuthService authService,
             AuthenticationManager authenticationManager,
-            JwtTokenProvider jwtProvider
+            JwtTokenProvider jwtProvider,
+            UserRepository userRepo
     ) {
         this.userService = userService;
         this.authService = authService;
         this.authenticationManager = authenticationManager;
         this.jwtProvider = jwtProvider;
+        this.userRepo = userRepo;
     }
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호로 신규 사용자 등록")
@@ -70,8 +76,14 @@ public class AuthController {
     ) {
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword());
+        UserEntity user = userRepo.findByEmail(req.getEmail())
+            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         Authentication auth = authenticationManager.authenticate(authToken);
-        String token = jwtProvider.generateToken(auth);
+        String token = jwtProvider.createToken(
+                                    user.getEmail(),
+                                    user.isRoles(),
+                                    user.getId()
+                                );
         long expiresIn = jwtProvider.getExpiryMs();
         return ResponseEntity.ok(new JwtResponseDTO(token, expiresIn));
     }

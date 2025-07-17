@@ -143,6 +143,7 @@ const MyPage = () => {
         const res = await axios.get(`http://localhost:8080/users/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        setUser(res.data);
         setName(res.data.name);
         setEmail(res.data.email);
         setPhone(res.data.phone || '');
