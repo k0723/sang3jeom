@@ -46,7 +46,7 @@ public class AuthService {
                 HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 틀렸습니다.");
         }
 
-        String token = jwtProvider.createToken(user.getEmail(), user.isRoles());
+        String token = jwtProvider.createToken(user.getEmail(), user.isRoles(), user.getId());
         log.info("User '{}' logged in, JWT issued", user.getEmail());
         return new JwtResponseDTO(token, expirationMs);
     }
