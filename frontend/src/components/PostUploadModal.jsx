@@ -5,7 +5,8 @@ const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", 
 export default function PostUploadModal({ open, onClose, image: initialImage, onPost }) {
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("전체 공개");
-  const [image, setImage] = useState(initialImage);
+  // 테스트용 하드코딩 이미지 URL - 추후 S3 버킷에서 가져올 예정
+  const [image, setImage] = useState(initialImage || "https://placehold.co/600x400");
   const [showEmoji, setShowEmoji] = useState(false);
 
   if (!open) return null;
