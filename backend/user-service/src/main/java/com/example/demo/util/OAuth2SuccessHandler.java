@@ -52,7 +52,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             });
 
         // 3) JWT 토큰 생성
-        String token = jwtProvider.createToken(email, user.isRoles());
+        String token = jwtProvider.createToken(email, user.isRoles(), user.getId());
 
         String targetUrl = UriComponentsBuilder
         .fromUriString("http://localhost:5173/oauth2/redirect")

@@ -2,6 +2,8 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.UserCreateRequestDTO;
 import com.example.demo.dto.UserDTO;
+import com.example.demo.dto.UserInfoDTO;
+import com.example.demo.dto.UserUpdateDTO;
 import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @Validated
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 public class UserController {
 
     private final UserService svc;
@@ -36,18 +38,20 @@ public class UserController {
 
     @Operation(summary = "단일 사용자 조회")
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUser(
+    public ResponseEntity<UserInfoDTO> getUser(
             @Parameter(description = "조회할 사용자 ID")
             @PathVariable Long id) {
-        return ResponseEntity.ok(svc.findById(id));
+        UserInfoDTO dto = svc.findById(id);
+        return ResponseEntity.ok(dto);
     }
 
     @Operation(summary = "사용자 업데이트")
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(
+    public ResponseEntity<UserUpdateDTO> userUpdate(
             @PathVariable Long id,
-            @RequestBody @Valid UserCreateRequestDTO req) {
-        return ResponseEntity.ok(svc.update(id, req));
+            @RequestBody UserUpdateDTO req) {
+        svc.userUpdate(id, req);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "사용자 삭제")

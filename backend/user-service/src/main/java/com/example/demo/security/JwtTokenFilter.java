@@ -34,7 +34,6 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
-
         String token = jwtProvider.resolveToken(request);
         if (token != null && jwtProvider.validateToken(token)) {
             var authentication = jwtProvider.getAuthentication(token);
