@@ -5,13 +5,19 @@ import com.example.demo.repository.UserRepository;
 import com.example.demo.dto.UserCreateRequestDTO;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.demo.dto.UserDTO;
+import com.example.demo.dto.UserInfoDTO;
+import com.example.demo.dto.UserUpdateDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.util.List;
 
 @Service
+@EnableCaching
 public class UserService {
     private final UserRepository repo;
     private final PasswordEncoder passwordEncoder;
@@ -57,20 +63,24 @@ public class UserService {
                    .toList();
     }
 
-    public UserDTO findById(Long id) {
+    public UserInfoDTO findById(Long id) {
         UserEntity u = repo.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + id));
-        return UserDTO.fromEntity(u);
+        return UserInfoDTO.userInfo(u);
     }
 
-    public UserDTO update(Long id, UserCreateRequestDTO req) {
+    @CacheEvict(cacheNames="users", key="#id")
+    @Transactional
+    public UserUpdateDTO userUpdate(Long id, UserUpdateDTO req) {
         UserEntity u = repo.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + id));
 
-        u.setUsername(req.getUsername());
+        u.setName(req.getName());
+        u.setPhone(req.getPhone());
         u.setEmail(req.getEmail());
+
         UserEntity saved = repo.save(u);
-        return UserDTO.fromEntity(saved);
+        return UserUpdateDTO.userUpdate(saved);
     }
 
     public void delete(Long id) {

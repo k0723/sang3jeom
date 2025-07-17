@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { 
   User, 
   ShoppingBag, 
@@ -16,19 +17,18 @@ import {
 import Navbar from '../components/Navbar';
 
 const MyPage = () => {
+  const [user, setUser] = useState(null);
+
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [createdAt, setCreatedAt] = useState('');
 
   // 임시 사용자 데이터
-  const user = {
-    name: '홍길동',
-    email: 'hong@example.com',
-    phone: '010-1234-5678',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2024.01.15',
-    totalOrders: 12,
-    totalSpent: 150000
-  };
 
   const orders = [
     {
@@ -94,6 +94,91 @@ const MyPage = () => {
     }
   };
 
+  useEffect(() => {
+    const handleUserInfo = async () => {
+      const token = localStorage.getItem('jwt')
+      const payload = parseJwt(token);
+      const id = payload.id;
+      try {
+        const res = await axios.get(`http://localhost:8080/users/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log(res.data)
+        setUser(res.data);
+        setName(res.data.name);
+        setEmail(res.data.email);
+        setPhone(res.data.phone || '');
+        if (res.data.createdAt) {
+        setCreatedAt(res.data.createdAt);
+        } else {
+          setCreatedAt(null);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('내 정보 조회 실패');
+      }
+      finally {
+         setIsLoading(false); 
+      }
+    };
+    handleUserInfo();
+  }, [])
+
+  function parseJwt(token) {
+    try {
+      const base64Payload = token.split('.')[1]; 
+      const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decodeURIComponent(
+        jsonPayload
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      ));
+    } catch (e) {
+      console.error('Invalid JWT:', e);
+      return null;
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    console.log('SAVE START', { isLoading, user });
+    setIsLoading(true);
+    console.log('AFTER setIsLoading(true)', { isLoading: true });
+    const previous = { ...user };
+    const optimistic = { ...user, name, email, phone };
+    setUser(optimistic);
+    try {
+      console.log('ABOUT TO CALL API');
+      const token = localStorage.getItem('jwt')
+      const payload = parseJwt(token);
+      const id = payload.id;
+      const res = await axios.put(
+        `http://localhost:8080/users/${id}`,
+        { name, email, phone },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      setUser(res.data);
+      console.log('API RESPONSE', res.data);
+      alert('프로필이 성공적으로 수정되었습니다.')
+    } catch (err) {
+      console.error(err);
+      setUser(previous);
+      alert('프로필 수정에 실패했습니다: ' + err.response?.data?.message || err.message)
+    }
+    finally {
+      console.log('SAVE END before setIsLoading(false)', { isLoading });
+      setIsLoading(false);       // 저장 완료 시 로딩 해제
+      console.log('SAVE END after setIsLoading(false)', { isLoading: false });
+    }
+  };
+  if (isLoading) {
+  return <div className="min-h-screen flex items-center justify-center">로딩 중…</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       
@@ -111,8 +196,9 @@ const MyPage = () => {
               <div className="text-center mb-6">
                 <div className="relative inline-block mb-4">
                   <img 
-                    src={user.avatar} 
+                    src={user.profileImageUrl  || '👤'}
                     alt="프로필" 
+                    onError={e => e.currentTarget.style.display = 'none'}
                     className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
                   />
                   <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-300">
@@ -121,17 +207,19 @@ const MyPage = () => {
                 </div>
                 <h2 className="text-xl font-bold text-gray-800 mb-1">{user.name}</h2>
                 <p className="text-sm text-gray-600 mb-2">{user.email}</p>
-                <p className="text-xs text-gray-500">가입일: {user.joinDate}</p>
+                <p className="text-xs text-gray-500">가입일: {user.createdAt ? new Date(user.createdAt).toLocaleString() : '정보 없음'}</p>
               </div>
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-lg font-bold text-blue-600">{user.totalOrders}</div>
+                    {user.totalOrders ?? 0}
                   <div className="text-xs text-gray-600">총 주문</div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-green-600">{user.totalSpent.toLocaleString()}원</div>
+                  <div className="text-lg font-bold text-green-600"></div>
+                    {(user.totalSpent ?? 0).toLocaleString()}원
                   <div className="text-xs text-gray-600">총 결제</div>
                 </div>
               </div>
@@ -176,7 +264,18 @@ const MyPage = () => {
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">프로필 정보</h2>
                     <button
-                      onClick={() => setIsEditing(!isEditing)}
+                      onClick={async() => {
+                        console.log('CLICK start', { isEditing, isLoading });
+                        if (isEditing) {
+                          await handleSaveProfile();
+                          console.log('AFTER SAVE', { isLoading, isEditing });
+                          setIsEditing(false);
+                        }
+                        else{
+                          setIsEditing(true);
+                          console.log('EDIT MODE ON', { isEditing: true });
+                        }
+                      }}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
                     >
                       <Edit className="w-4 h-4" />
@@ -190,8 +289,9 @@ const MyPage = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">이름</label>
                         <input
                           type="text"
-                          defaultValue={user.name}
+                          value={name}
                           disabled={!isEditing}
+                          onChange={e => setName(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -199,8 +299,9 @@ const MyPage = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
                         <input
                           type="email"
-                          defaultValue={user.email}
+                          value={email}
                           disabled={!isEditing}
+                          onChange={e => setEmail(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -208,8 +309,9 @@ const MyPage = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">전화번호</label>
                         <input
                           type="tel"
-                          defaultValue={user.phone}
+                          value={phone}
                           disabled={!isEditing}
+                          onChange={e => setPhone(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
                         />
                       </div>
@@ -217,8 +319,9 @@ const MyPage = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">가입일</label>
                         <input
                           type="text"
-                          defaultValue={user.joinDate}
+                          value={createdAt}
                           disabled
+                          onChange={e => setCreatedAt(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                         />
                       </div>
@@ -257,7 +360,8 @@ const MyPage = () => {
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <div className="flex justify-between items-center">
                               <span className="text-sm text-gray-600">총 결제금액</span>
-                              <span className="font-semibold text-gray-800">{order.total.toLocaleString()}원</span>
+                                {(order.total?.toLocaleString() ?? '0')}원
+                              <span className="font-semibold text-gray-800"></span>
                             </div>
                           </div>
                         </div>
@@ -282,7 +386,7 @@ const MyPage = () => {
                         <div className="p-4">
                           <h3 className="font-semibold text-gray-800 mb-2">{item.name}</h3>
                           <div className="flex items-center justify-between">
-                            <span className="text-lg font-bold text-blue-600">{item.price.toLocaleString()}원</span>
+                            <span className="text-lg font-bold text-blue-600">{item.price.toLocaleString() ?? '0'}원</span>
                             <button className="flex items-center space-x-1 text-red-600 hover:text-red-700">
                               <Heart className="w-5 h-5 fill-current" />
                               <span className="text-sm">찜해제</span>
