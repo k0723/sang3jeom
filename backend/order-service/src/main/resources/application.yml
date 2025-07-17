@@ -13,5 +13,5 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-kakao:
-  secret-key: DEV094E5121A7D0551D977EB0E934878164F2149
+# kakao:
+#   secret-key: (환경변수 또는 .env 파일에서 관리)
