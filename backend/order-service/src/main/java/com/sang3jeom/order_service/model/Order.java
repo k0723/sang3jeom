@@ -24,6 +24,10 @@ public class Order {
 
     private LocalDateTime orderDate;
 
+    private String address;
+
+    private String memo;
+
     @PrePersist
     public void prePersist() {
         this.orderDate = LocalDateTime.now();

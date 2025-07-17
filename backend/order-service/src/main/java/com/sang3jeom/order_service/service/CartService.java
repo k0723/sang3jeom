@@ -22,4 +22,10 @@ public class CartService {
         cart.setQuantity(quantity);
         return cartRepository.save(cart);
     }
+
+    public java.util.List<Cart> getCartItemsByUserId(int userId) {
+        return cartRepository.findAll().stream()
+            .filter(cart -> cart.getUserId() == userId)
+            .toList();
+    }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import { 
@@ -156,6 +156,7 @@ export default function GoodsMaker() {
   const bgRef = useRef(null);
   const fgRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     AOS.init({
@@ -314,9 +315,48 @@ export default function GoodsMaker() {
     return (basePrice * quantity).toLocaleString();
   };
 
+  // 결제창 띄우기 함수
+  const handleOrder = () => {
+    navigate("/order", { state: { product: {
+      name: selected.label,
+      desc: selected.description,
+      option: `${quantity}개`,
+      price: parseInt(selected.price.replace(/[^0-9]/g, '')),
+      image: uploadedImg || aiImg || selected.img,
+      quantity: quantity,
+    } } });
+  };
+
+  // 장바구니 추가 함수
+  const handleAddToCart = async () => {
+    // TODO: 실제 로그인 유저ID로 대체 필요
+    const userId = 1;
+    const goodsId = selected.key; // 실제 goodsId로 대체 필요
+    const quantityValue = quantity;
+    try {
+      const res = await fetch("http://localhost:8080/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: 0,
+          goodsId: 0,
+          quantity: Number(quantity)
+        })
+      });
+      const data = await res.json();
+      if (data.cartId) {
+        sessionStorage.setItem("cart_id", data.cartId);
+        alert("장바구니에 추가되었습니다!");
+      } else {
+        alert("장바구니 추가 실패: " + (data.message || ""));
+      }
+    } catch (e) {
+      alert("장바구니 추가 중 오류 발생");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <Navbar />
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -404,6 +444,7 @@ export default function GoodsMaker() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={handleOrder}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기
