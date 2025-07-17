@@ -19,6 +19,7 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import mugCupImg from '../assets/mug_cup.jpg';
+import tshirtImg from '../assets/t_shirts.png';
 
 const goodsList = [
   { 
@@ -37,7 +38,7 @@ const goodsList = [
     minQuantity: "1개",
     description: "반팔 티셔츠",
     features: ["100% 면 소재", "다양한 사이즈", "내구성 우수"],
-    img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop"
+    img: tshirtImg, // import한 이미지 사용
   },
   { 
     key: "poster", 
@@ -122,21 +123,20 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-function drawCylindricalImage(ctx, img, x, y, w, h, ellipseA = 18) {
-  // ellipseA: 타원의 반세로축(픽셀 단위, 컵 입구 타원 곡률)
+function drawCylindricalImage(ctx, img, x, y, w, h, curveTop = 5, curveBottom = 5) {
   const slices = 320;
   for (let i = 0; i < slices; i++) {
     const sx = (img.width / slices) * i;
     const sw = img.width / slices;
     const dx = x + (w / slices) * i;
-    const theta = (i / (slices - 1) - 0.5) * Math.PI;
-    // 윗면/아랫면 모두 같은 타원 곡선
-    const yTop = y + ellipseA * Math.sin(theta);
-    const yBottom = y + h + ellipseA * Math.sin(theta);
+    const theta = ((i + 0.5) / slices - 0.5) * Math.PI;
+    // 윗변과 아랫변에 각각 다른 곡률 적용
+    const y1 = y - curveTop * (1 - Math.cos(theta));
+    const y2 = y + h - curveBottom * (1 - Math.cos(theta));
     ctx.drawImage(
       img,
       sx, 0, sw, img.height,
-      dx, yTop, w / slices, yBottom - yTop
+      dx, y1, w / slices, y2 - y1
     );
   }
 }
@@ -250,20 +250,86 @@ export default function GoodsMaker() {
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
       y = canvas.height * 0.35 + imgOffset.y;
+
+      // 인쇄 영역 비율
+      const areaRatio = w / h;
+      const imgRatio = fg.width / fg.height;
+
+      let sx, sy, sWidth, sHeight;
+      if (imgRatio > areaRatio) {
+        // 이미지가 더 가로로 김: 좌우 잘라냄
+        sHeight = fg.height;
+        sWidth = fg.height * areaRatio;
+        sx = (fg.width - sWidth) / 2;
+        sy = 0;
+      } else {
+        // 이미지가 더 세로로 김: 상하 잘라냄
+        sWidth = fg.width;
+        sHeight = fg.width / areaRatio;
+        sx = 0;
+        sy = (fg.height - sHeight) / 2;
+      }
+
       ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.10)"; // 약한 그림자
-      ctx.shadowBlur = 8;
-      ctx.globalAlpha = 0.92; // 약간 투명
-      ctx.globalCompositeOperation = "multiply"; // 컵과 자연스럽게 섞임
-      drawCylindricalImage(ctx, fg, x, y, w, h, );
-      ctx.globalCompositeOperation = "source-over"; // 원래대로 복구
+      ctx.globalAlpha = 0.92;
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(fg, sx, sy, sWidth, sHeight, x, y, w, h);
+      ctx.globalCompositeOperation = "source-over";
       ctx.restore();
     } else if (selected.key === 'tshirt') {
-      w = canvas.width * 0.6 * imgScale;
-      h = w;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = canvas.height * 0.55 + imgOffset.y;
-      ctx.drawImage(fg, x, y, w, h);
+      // 티셔츠 인쇄 영역 설정 (예시값, 실제 티셔츠 이미지에 맞게 조정)
+      const tshirtArea = {
+        x: canvas.width * 0.25,
+        y: canvas.height * 0.28,
+        w: canvas.width * 0.5,
+        h: canvas.height * 0.5,
+      };
+
+      // 비율 유지하여 이미지 크기/위치 계산
+      let imgW = tshirtArea.w * imgScale;
+      let imgH = imgW * (fg.height / fg.width);
+      if (imgH > tshirtArea.h * imgScale) {
+        imgH = tshirtArea.h * imgScale;
+        imgW = imgH * (fg.width / fg.height);
+      }
+      const imgX = tshirtArea.x + (tshirtArea.w - imgW) / 2 + imgOffset.x;
+      const imgY = tshirtArea.y + (tshirtArea.h - imgH) / 2 + imgOffset.y;
+
+      // 인쇄 영역 비율
+      const areaRatio = tshirtArea.w / tshirtArea.h;
+      const imgRatio = fg.width / fg.height;
+
+      let drawW, drawH, sx, sy, sWidth, sHeight;
+      if (imgRatio > areaRatio) {
+        // 이미지가 더 가로로 김: 좌우 잘라냄
+        drawH = fg.height;
+        drawW = fg.height * areaRatio;
+        sx = (fg.width - drawW) / 2;
+        sy = 0;
+        sWidth = drawW;
+        sHeight = drawH;
+      } else {
+        // 이미지가 더 세로로 김: 상하 잘라냄
+        drawW = fg.width;
+        drawH = fg.width / areaRatio;
+        sx = 0;
+        sy = (fg.height - drawH) / 2;
+        sWidth = drawW;
+        sHeight = drawH;
+      }
+
+      ctx.drawImage(
+        fg,
+        sx, sy, sWidth, sHeight, // 소스 영역(중앙 잘라내기)
+        tshirtArea.x, tshirtArea.y, tshirtArea.w, tshirtArea.h // 대상 영역(꽉 채우기)
+      );
+
+      // (선택) 약간의 그림자 효과
+      // ctx.save();
+      // ctx.shadowColor = "rgba(0,0,0,0.08)";
+      // ctx.shadowBlur = 6;
+      // ctx.drawImage(fg, imgX, imgY, imgW, imgH);
+      // ctx.restore();
     } else {
       // 기타 굿즈별 위치/크기 (필요시 추가)
       w = canvas.width * 0.5 * imgScale;
@@ -272,7 +338,7 @@ export default function GoodsMaker() {
       y = (canvas.height - h) / 2 + imgOffset.y;
       ctx.drawImage(fg, x, y, w, h);
     }
-  }, [imgLoaded, imgScale, imgOffset, selected]);
+  }, [selected, uploadedImg, aiImg, imgScale, imgOffset, imgLoaded]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -481,9 +547,10 @@ export default function GoodsMaker() {
                 </div>
                 <canvas
                   ref={canvasRef}
-                  width={400}
-                  height={400}
+                  width={600}      // 예시: 2:1 비율
+                  height={300}
                   className="rounded-xl"
+                  style={{ width: '100%', height: 'auto' }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
