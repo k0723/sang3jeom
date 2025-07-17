@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import { 
@@ -156,7 +156,21 @@ export default function GoodsMaker() {
   const bgRef = useRef(null);
   const fgRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const navigate = useNavigate();
+
+  // 각 굿즈별로 별도의 합성 이미지 상태 추가
+  const [mugCompositeImg, setMugCompositeImg] = useState(null);
+  const [tshirtCompositeImg, setTshirtCompositeImg] = useState(null);
+  
+  const getCurrentCompositeImg = () => {
+    switch(selected.key) {
+      case 'mug':
+        return mugCompositeImg;
+      case 'tshirt':
+        return tshirtCompositeImg;
+      default:
+        return uploadedImg || aiImg;
+    }
+  };
 
   useEffect(() => {
     AOS.init({
@@ -173,7 +187,11 @@ export default function GoodsMaker() {
     bg.crossOrigin = "anonymous";
     fg.crossOrigin = "anonymous";
     bg.src = selected.img;
-    fg.src = uploadedImg || aiImg;
+    
+    // 현재 굿즈에 맞는 합성 이미지 사용
+    const currentCompositeImg = getCurrentCompositeImg();
+    fg.src = currentCompositeImg || aiImg;
+    
     bg.onload = () => {
       fg.onload = () => {
         bgRef.current = bg;
@@ -181,7 +199,7 @@ export default function GoodsMaker() {
         setImgLoaded(true);
       };
     };
-  }, [uploadedImg, aiImg, selected]);
+  }, [selected, mugCompositeImg, tshirtCompositeImg, aiImg]); // 의존성 배열 수정
 
   // 굿즈 배경만 그리는 useEffect
   useEffect(() => {
@@ -250,39 +268,21 @@ export default function GoodsMaker() {
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
       y = canvas.height * 0.35 + imgOffset.y;
-
-      // 인쇄 영역 비율
-      const areaRatio = w / h;
-      const imgRatio = fg.width / fg.height;
-
-      let sx, sy, sWidth, sHeight;
-      if (imgRatio > areaRatio) {
-        // 이미지가 더 가로로 김: 좌우 잘라냄
-        sHeight = fg.height;
-        sWidth = fg.height * areaRatio;
-        sx = (fg.width - sWidth) / 2;
-        sy = 0;
-      } else {
-        // 이미지가 더 세로로 김: 상하 잘라냄
-        sWidth = fg.width;
-        sHeight = fg.width / areaRatio;
-        sx = 0;
-        sy = (fg.height - sHeight) / 2;
-      }
-
       ctx.save();
-      ctx.globalAlpha = 0.92;
-      ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(fg, sx, sy, sWidth, sHeight, x, y, w, h);
-      ctx.globalCompositeOperation = "source-over";
+      ctx.shadowColor = "rgba(0,0,0,0.10)"; // 약한 그림자
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = 0.92; // 약간 투명
+      ctx.globalCompositeOperation = "multiply"; // 컵과 자연스럽게 섞임
+      drawCylindricalImage(ctx, fg, x, y, w, h, 10, 20); // 윗변 10, 아랫변 20
+      ctx.globalCompositeOperation = "source-over"; // 원래대로 복구
       ctx.restore();
     } else if (selected.key === 'tshirt') {
-      // 티셔츠 인쇄 영역 설정 (예시값, 실제 티셔츠 이미지에 맞게 조정)
+      // 티셔츠 인쇄 영역을 머그컵과 비슷한 크기로 설정
       const tshirtArea = {
-        x: canvas.width * 0.25,
-        y: canvas.height * 0.28,
-        w: canvas.width * 0.5,
-        h: canvas.height * 0.5,
+        x: canvas.width * 0.25,    // 머그컵과 비슷한 중앙 정렬
+        y: canvas.height * 0.25,   // 머그컵보다 약간 위쪽
+        w: canvas.width * 0.5,     // 머그컵과 동일한 너비
+        h: canvas.height * 0.5,    // 정사각형 유지
       };
 
       // 비율 유지하여 이미지 크기/위치 계산
@@ -301,7 +301,6 @@ export default function GoodsMaker() {
 
       let drawW, drawH, sx, sy, sWidth, sHeight;
       if (imgRatio > areaRatio) {
-        // 이미지가 더 가로로 김: 좌우 잘라냄
         drawH = fg.height;
         drawW = fg.height * areaRatio;
         sx = (fg.width - drawW) / 2;
@@ -309,7 +308,6 @@ export default function GoodsMaker() {
         sWidth = drawW;
         sHeight = drawH;
       } else {
-        // 이미지가 더 세로로 김: 상하 잘라냄
         drawW = fg.width;
         drawH = fg.width / areaRatio;
         sx = 0;
@@ -320,16 +318,9 @@ export default function GoodsMaker() {
 
       ctx.drawImage(
         fg,
-        sx, sy, sWidth, sHeight, // 소스 영역(중앙 잘라내기)
-        tshirtArea.x, tshirtArea.y, tshirtArea.w, tshirtArea.h // 대상 영역(꽉 채우기)
+        sx, sy, sWidth, sHeight,
+        tshirtArea.x, tshirtArea.y, tshirtArea.w, tshirtArea.h
       );
-
-      // (선택) 약간의 그림자 효과
-      // ctx.save();
-      // ctx.shadowColor = "rgba(0,0,0,0.08)";
-      // ctx.shadowBlur = 6;
-      // ctx.drawImage(fg, imgX, imgY, imgW, imgH);
-      // ctx.restore();
     } else {
       // 기타 굿즈별 위치/크기 (필요시 추가)
       w = canvas.width * 0.5 * imgScale;
@@ -343,7 +334,19 @@ export default function GoodsMaker() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setUploadedImg(URL.createObjectURL(file));
+      const imageUrl = URL.createObjectURL(file);
+      
+      // 현재 선택된 굿즈에만 이미지 저장
+      switch(selected.key) {
+        case 'mug':
+          setMugCompositeImg(imageUrl);
+          break;
+        case 'tshirt':
+          setTshirtCompositeImg(imageUrl);
+          break;
+        default:
+          setUploadedImg(imageUrl);
+      }
     }
   };
 
@@ -381,48 +384,9 @@ export default function GoodsMaker() {
     return (basePrice * quantity).toLocaleString();
   };
 
-  // 결제창 띄우기 함수
-  const handleOrder = () => {
-    navigate("/order", { state: { product: {
-      name: selected.label,
-      desc: selected.description,
-      option: `${quantity}개`,
-      price: parseInt(selected.price.replace(/[^0-9]/g, '')),
-      image: uploadedImg || aiImg || selected.img,
-      quantity: quantity,
-    } } });
-  };
-
-  // 장바구니 추가 함수
-  const handleAddToCart = async () => {
-    // TODO: 실제 로그인 유저ID로 대체 필요
-    const userId = 1;
-    const goodsId = selected.key; // 실제 goodsId로 대체 필요
-    const quantityValue = quantity;
-    try {
-      const res = await fetch("http://localhost:8080/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: 0,
-          goodsId: 0,
-          quantity: Number(quantity)
-        })
-      });
-      const data = await res.json();
-      if (data.cartId) {
-        sessionStorage.setItem("cart_id", data.cartId);
-        alert("장바구니에 추가되었습니다!");
-      } else {
-        alert("장바구니 추가 실패: " + (data.message || ""));
-      }
-    } catch (e) {
-      alert("장바구니 추가 중 오류 발생");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
+      <Navbar />
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -510,7 +474,6 @@ export default function GoodsMaker() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={handleOrder}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기
@@ -547,10 +510,9 @@ export default function GoodsMaker() {
                 </div>
                 <canvas
                   ref={canvasRef}
-                  width={600}      // 예시: 2:1 비율
-                  height={300}
+                  width={400}
+                  height={400}
                   className="rounded-xl"
-                  style={{ width: '100%', height: 'auto' }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
