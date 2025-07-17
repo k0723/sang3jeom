@@ -33,7 +33,7 @@ public class JwtLoginFilter extends UsernamePasswordAuthenticationFilter {
         super.setAuthenticationManager(authManager);
         super.setAuthenticationSuccessHandler(successHandler);
         super.setAuthenticationFailureHandler(failureHandler);
-        super.setFilterProcessesUrl("/api/auth/login");
+        super.setFilterProcessesUrl("/login");
     }
 
     @Override
