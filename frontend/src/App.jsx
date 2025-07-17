@@ -12,7 +12,11 @@ import Navbar from "./components/Navbar";
 // import Inquiry from "./pages/Inquiry";
 import CharacterMaker from './pages/CharacterMaker';
 import OAuth2RedirectHandler from './pages/OAuth2RedirectHandler';
+import PaySuccess from "./pages/PaySuccess";
 import { useState } from "react";
+import OrderPage from "./pages/OrderPage";
+import OrderComplete from "./pages/OrderComplete";
+import Community from "./pages/Community";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
@@ -28,6 +32,8 @@ function App() {
         <Route path="/goods-maker" element={<GoodsMaker />} />
         {/* <Route path="/cart" element={<Cart />} /> */}
         {/* <Route path="/order" element={<Order />} /> */}
+        <Route path="/order" element={<OrderPage />} />
+        <Route path="/order-complete" element={<OrderComplete />} />
         <Route path="/mypage" element={<MyPage />} />
         {/* <Route path="/ranking" element={<Ranking />} /> */}
         {/* <Route path="/admin" element={<Admin />} /> */}
@@ -40,6 +46,8 @@ function App() {
             <OAuth2RedirectHandler setIsLoggedIn={setIsLoggedIn} />
           }
         />
+        <Route path="/pay/success" element={<PaySuccess />} />
+        <Route path="/community" element={<Community />} />
       </Routes>
     </BrowserRouter>
   );
