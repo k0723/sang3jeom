@@ -209,7 +209,16 @@ export default function CharacterMaker({ onDone }) {
               >
                 {preview ? (
                   <div className="text-center">
-                    <img src={preview} alt="업로드 미리보기" className="w-32 h-32 object-cover rounded-lg shadow mb-4 mx-auto" />
+                    <img
+                      src={preview}
+                      alt="업로드 이미지"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px', // 원하는 최대 높이
+                        objectFit: 'contain', // 비율 유지
+                        borderRadius: 12
+                      }}
+                    />
                     <p className="text-green-600 font-semibold">이미지가 업로드되었습니다!</p>
                   </div>
                 ) : (
@@ -306,11 +315,18 @@ export default function CharacterMaker({ onDone }) {
               >
                 <h2 className="text-xl font-bold text-gray-800 mb-6">생성 결과</h2>
                 <div className="text-center">
-                  <img 
-                    src={result.result_url} 
-                    alt="AI 캐릭터" 
-                    className="mx-auto rounded-xl shadow-lg mb-6 w-64 h-64 object-cover"
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img
+                      src={result.result_url}
+                      alt="생성 결과"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '300px',
+                        objectFit: 'contain',
+                        borderRadius: 16
+                      }}
+                    />
+                  </div>
                   
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <h3 className="font-semibold text-gray-800 mb-2">선택된 옵션</h3>

@@ -123,14 +123,13 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-function drawCylindricalImage(ctx, img, x, y, w, h, curveTop = 5, curveBottom = 5) {
-  const slices = 320;
+function drawCylindricalImage(ctx, img, x, y, w, h, curveTop = 5, curveBottom = 15) {
+  const slices = 1000; // 슬라이스 수를 1000으로 늘림
   for (let i = 0; i < slices; i++) {
     const sx = (img.width / slices) * i;
     const sw = img.width / slices;
     const dx = x + (w / slices) * i;
     const theta = ((i + 0.5) / slices - 0.5) * Math.PI;
-    // 윗변과 아랫변에 각각 다른 곡률 적용
     const y1 = y - curveTop * (1 - Math.cos(theta));
     const y2 = y + h - curveBottom * (1 - Math.cos(theta));
     ctx.drawImage(
@@ -149,28 +148,18 @@ export default function GoodsMaker() {
   const [selectedOptions, setSelectedOptions] = useState({});
   const canvasRef = useRef();
   const [uploadedImg, setUploadedImg] = useState(null);
-  const [imgScale, setImgScale] = useState(1); // 1 = 100%
+  const [imgScale, setImgScale] = useState(0.4); // 40%로 시작
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 }); // x, y는 px 단위 오프셋
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const bgRef = useRef(null);
   const fgRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const fileInputRef = useRef();
 
-  // 각 굿즈별로 별도의 합성 이미지 상태 추가
-  const [mugCompositeImg, setMugCompositeImg] = useState(null);
-  const [tshirtCompositeImg, setTshirtCompositeImg] = useState(null);
-  
-  const getCurrentCompositeImg = () => {
-    switch(selected.key) {
-      case 'mug':
-        return mugCompositeImg;
-      case 'tshirt':
-        return tshirtCompositeImg;
-      default:
-        return uploadedImg || aiImg;
-    }
-  };
+  const [mugImage, setMugImage] = useState(null);
+  const [tshirtImage, setTshirtImage] = useState(null);
+  // ... 기타 굿즈별 상태
 
   useEffect(() => {
     AOS.init({
@@ -181,17 +170,29 @@ export default function GoodsMaker() {
   }, []);
 
   useEffect(() => {
+    // 굿즈를 바꿀 때마다 파일 input도 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [selected]);
+
+  const getCurrentImage = () => {
+    switch(selected.key) {
+      case 'mug': return mugImage;
+      case 'tshirt': return tshirtImage;
+      // ... 기타 굿즈
+      default: return null;
+    }
+  };
+
+  useEffect(() => {
     setImgLoaded(false);
     const bg = new window.Image();
     const fg = new window.Image();
     bg.crossOrigin = "anonymous";
     fg.crossOrigin = "anonymous";
     bg.src = selected.img;
-    
-    // 현재 굿즈에 맞는 합성 이미지 사용
-    const currentCompositeImg = getCurrentCompositeImg();
-    fg.src = currentCompositeImg || aiImg;
-    
+    fg.src = getCurrentImage() || aiImg;
     bg.onload = () => {
       fg.onload = () => {
         bgRef.current = bg;
@@ -199,7 +200,7 @@ export default function GoodsMaker() {
         setImgLoaded(true);
       };
     };
-  }, [selected, mugCompositeImg, tshirtCompositeImg, aiImg]); // 의존성 배열 수정
+  }, [selected, mugImage, tshirtImage, aiImg]);
 
   // 굿즈 배경만 그리는 useEffect
   useEffect(() => {
@@ -264,10 +265,21 @@ export default function GoodsMaker() {
     // 굿즈 종류별로 위치/크기 다르게
     let x, y, w, h;
     if (selected.key === 'mug') {
-      w = canvas.width * 0.5 * imgScale;
+      w = canvas.width * 0.4 * imgScale; // 40%로 줄임
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
       y = canvas.height * 0.35 + imgOffset.y;
+
+      // 비율 유지하며 drawImage
+      const imgRatio = fg.width / fg.height;
+      let drawW = w, drawH = h;
+      if (imgRatio > 1) {
+        drawH = w / imgRatio;
+        y += (h - drawH) / 2;
+      } else {
+        drawW = h * imgRatio;
+        x += (w - drawW) / 2;
+      }
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.10)"; // 약한 그림자
       ctx.shadowBlur = 8;
@@ -277,15 +289,15 @@ export default function GoodsMaker() {
       ctx.globalCompositeOperation = "source-over"; // 원래대로 복구
       ctx.restore();
     } else if (selected.key === 'tshirt') {
-      // 티셔츠 인쇄 영역을 머그컵과 비슷한 크기로 설정
+      // 인쇄 영역 계산 (기존 코드)
       const tshirtArea = {
-        x: canvas.width * 0.25,    // 머그컵과 비슷한 중앙 정렬
-        y: canvas.height * 0.25,   // 머그컵보다 약간 위쪽
-        w: canvas.width * 0.5,     // 머그컵과 동일한 너비
-        h: canvas.height * 0.5,    // 정사각형 유지
+        x: canvas.width * 0.25,
+        y: canvas.height * 0.28,
+        w: canvas.width * 0.5,
+        h: canvas.height * 0.5,
       };
 
-      // 비율 유지하여 이미지 크기/위치 계산
+      // 비율 유지하여 이미지 크기/위치 계산 (기존 코드)
       let imgW = tshirtArea.w * imgScale;
       let imgH = imgW * (fg.height / fg.width);
       if (imgH > tshirtArea.h * imgScale) {
@@ -295,32 +307,28 @@ export default function GoodsMaker() {
       const imgX = tshirtArea.x + (tshirtArea.w - imgW) / 2 + imgOffset.x;
       const imgY = tshirtArea.y + (tshirtArea.h - imgH) / 2 + imgOffset.y;
 
-      // 인쇄 영역 비율
-      const areaRatio = tshirtArea.w / tshirtArea.h;
-      const imgRatio = fg.width / fg.height;
+      // 1. 그림자 효과 (선택)
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.08)";
+      ctx.shadowBlur = 6;
+      ctx.drawImage(fg, imgX, imgY, imgW, imgH);
+      ctx.restore();
 
-      let drawW, drawH, sx, sy, sWidth, sHeight;
-      if (imgRatio > areaRatio) {
-        drawH = fg.height;
-        drawW = fg.height * areaRatio;
-        sx = (fg.width - drawW) / 2;
-        sy = 0;
-        sWidth = drawW;
-        sHeight = drawH;
-      } else {
-        drawW = fg.width;
-        drawH = fg.width / areaRatio;
-        sx = 0;
-        sy = (fg.height - drawH) / 2;
-        sWidth = drawW;
-        sHeight = drawH;
-      }
+      // 2. 블렌드 모드 + 투명도
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(fg, imgX, imgY, imgW, imgH);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
 
-      ctx.drawImage(
-        fg,
-        sx, sy, sWidth, sHeight,
-        tshirtArea.x, tshirtArea.y, tshirtArea.w, tshirtArea.h
-      );
+      // 3. 섬유 질감 강조 (티셔츠 이미지를 위에 살짝 덮기)
+      ctx.save();
+      ctx.globalAlpha = 0.12; // 질감 강조용
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
     } else {
       // 기타 굿즈별 위치/크기 (필요시 추가)
       w = canvas.width * 0.5 * imgScale;
@@ -329,23 +337,16 @@ export default function GoodsMaker() {
       y = (canvas.height - h) / 2 + imgOffset.y;
       ctx.drawImage(fg, x, y, w, h);
     }
-  }, [selected, uploadedImg, aiImg, imgScale, imgOffset, imgLoaded]);
+  }, [imgLoaded, imgScale, imgOffset, selected]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      
-      // 현재 선택된 굿즈에만 이미지 저장
+      const url = URL.createObjectURL(file);
       switch(selected.key) {
-        case 'mug':
-          setMugCompositeImg(imageUrl);
-          break;
-        case 'tshirt':
-          setTshirtCompositeImg(imageUrl);
-          break;
-        default:
-          setUploadedImg(imageUrl);
+        case 'mug': setMugImage(url); break;
+        case 'tshirt': setTshirtImage(url); break;
+        // ... 기타 굿즈
       }
     }
   };
@@ -510,9 +511,10 @@ export default function GoodsMaker() {
                 </div>
                 <canvas
                   ref={canvasRef}
-                  width={400}
-                  height={400}
+                  width={640}      // 16:9 비율 예시
+                  height={358}
                   className="rounded-xl"
+                  style={{ width: '100%', height: 'auto' }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
@@ -529,6 +531,7 @@ export default function GoodsMaker() {
             <div className="mb-6 flex flex-col items-center">
               <label className="block mb-2 text-gray-700 font-semibold">AI 캐릭터 이미지 업로드 (테스트용)</label>
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
