@@ -32,4 +32,10 @@ public class CartController {
                 "addedAt", savedCart.getAddedAt().toString()
         ));
     }
+
+    @GetMapping
+    public ResponseEntity<?> getCartItems() {
+        int userId = 1; // TODO: 실제 로그인 유저ID로 대체
+        return ResponseEntity.ok(cartService.getCartItemsByUserId(userId));
+    }
 }
