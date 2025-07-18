@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -37,28 +38,30 @@ public class UserController {
     }
 
     @Operation(summary = "단일 사용자 조회")
-    @GetMapping("/{id}")
-    public ResponseEntity<UserInfoDTO> getUser(
-            @Parameter(description = "조회할 사용자 ID")
-            @PathVariable Long id) {
-        UserInfoDTO dto = svc.findById(id);
+    @GetMapping("/me")
+    public ResponseEntity<UserInfoDTO> getUser(Authentication authentication) {
+        Long userId = (Long) authentication.getDetails();
+        UserInfoDTO dto = svc.findById(userId);
         return ResponseEntity.ok(dto);
     }
 
     @Operation(summary = "사용자 업데이트")
-    @PutMapping("/{id}")
+    @PutMapping("/me")
     public ResponseEntity<UserUpdateDTO> userUpdate(
-            @PathVariable Long id,
-            @RequestBody UserUpdateDTO req) {
-        svc.userUpdate(id, req);
+        Authentication authentication,
+        @RequestBody @Valid UserUpdateDTO req
+    ) {
+        Long userId = (Long) authentication.getDetails();
+        svc.userUpdate(userId, req);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "사용자 삭제")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/me")
     @PreAuthorize("hasRole('ADMIN')")
-    public void deleteUser(@PathVariable Long id) {
-        svc.delete(id);
+    public void deleteUser(Authentication authentication) {
+        Long userId = (Long) authentication.getDetails();
+        svc.delete(userId);
     }
 }
