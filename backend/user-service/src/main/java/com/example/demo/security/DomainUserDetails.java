@@ -56,4 +56,5 @@ public class DomainUserDetails implements UserDetails {
         // 필요시 가입취소 등 로직 추가
         return true;
     }
+
 }

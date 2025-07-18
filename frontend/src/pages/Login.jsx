@@ -27,14 +27,15 @@ const Login = ({ setIsLoggedIn }) => {
     
     // TODO: 실제 로그인 로직 구현
     try {
-      const res = await axios.post('http://localhost:8080/login', {
-        email,
-        password
-      });
-      const token = res.data.token;
+      const res = await axios.post('http://localhost:8080/login', 
+        {email,
+        password},
+         { withCredentials: true } 
+      );
+      const { accessToken, refreshToken } = res.data;
       console.log(res.data); // 서버에서 반환된 JWT 토큰
-      sessionStorage.setItem('jwt',token);
-      localStorage.setItem('jwt',token);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
       sessionStorage.setItem('isLoggedIn', true);
       localStorage.setItem('isLoggedIn', 'true');
       setIsLoggedIn(true);      // React 상태 업데이트

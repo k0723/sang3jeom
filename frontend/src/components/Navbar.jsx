@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
-import { Logout } from '../utils/logout';
+import { useLogout } from '../utils/useLogout';
 
 const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,7 +42,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
 
-  const logout = Logout(setIsLoggedIn);
+  const logout = useLogout(setIsLoggedIn);
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
