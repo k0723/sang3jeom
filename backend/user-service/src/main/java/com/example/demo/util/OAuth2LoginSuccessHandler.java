@@ -51,7 +51,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         String username = authentication.getName();
         Long id = user.getId();
-        String token = jwtProvider.createToken(username, false, id);
+        String token = jwtProvider.createAccessToken(username, false, id);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write("{\"token\":\"" + token + "\"}");
     }

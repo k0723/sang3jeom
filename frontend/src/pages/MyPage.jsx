@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLogout } from '../utils/useLogout';
 import axios from 'axios';
 import { 
   User, 
@@ -15,8 +16,12 @@ import {
   CheckCircle
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useNavigate } from 'react-router-dom';
 
-const MyPage = () => {
+const MyPage = ({ setIsLoggedIn }) => {
+
+  const navigate = useNavigate();
+  const logout = useLogout(setIsLoggedIn);
   const [user, setUser] = useState(null);
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -95,14 +100,14 @@ const MyPage = () => {
   };
 
   useEffect(() => {
-    const handleUserInfo = async () => {
-      const token = localStorage.getItem('jwt')
-      const payload = parseJwt(token);
-      const id = payload.id;
+    handleUserInfo();
+  }, [])
+  const handleUserInfo = async () => {
       try {
-        const res = await axios.get(`http://localhost:8080/users/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(
+      'http://localhost:8080/users/me',
+      { withCredentials: true }
+    );
         console.log(res.data)
         setUser(res.data);
         setName(res.data.name);
@@ -121,24 +126,6 @@ const MyPage = () => {
          setIsLoading(false); 
       }
     };
-    handleUserInfo();
-  }, [])
-
-  function parseJwt(token) {
-    try {
-      const base64Payload = token.split('.')[1]; 
-      const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(decodeURIComponent(
-        jsonPayload
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      ));
-    } catch (e) {
-      console.error('Invalid JWT:', e);
-      return null;
-    }
-  }
 
   const handleSaveProfile = async () => {
     console.log('SAVE START', { isLoading, user });
@@ -149,20 +136,12 @@ const MyPage = () => {
     setUser(optimistic);
     try {
       console.log('ABOUT TO CALL API');
-      const token = localStorage.getItem('jwt')
-      const payload = parseJwt(token);
-      const id = payload.id;
       const res = await axios.put(
-        `http://localhost:8080/users/${id}`,
-        { name, email, phone },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      )
-      setUser(res.data);
-      console.log('API RESPONSE', res.data);
+      'http://localhost:8080/users/me',
+      {name, email, phone },
+      { withCredentials: true }
+    );
+      await handleUserInfo();
       alert('프로필이 성공적으로 수정되었습니다.')
     } catch (err) {
       console.error(err);
@@ -170,9 +149,25 @@ const MyPage = () => {
       alert('프로필 수정에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
     finally {
-      console.log('SAVE END before setIsLoading(false)', { isLoading });
       setIsLoading(false);       // 저장 완료 시 로딩 해제
-      console.log('SAVE END after setIsLoading(false)', { isLoading: false });
+    }
+  };
+
+  const handleprofiledelete = async () => {
+    try {
+      console.log('ABOUT TO CALL API');
+      const res = await axios.delete(
+        `http://localhost:8080/users/me`,
+        { withCredentials: true }
+      )
+      console.log('API RESPONSE', res.data);
+      await logout();
+      // 3) React 상태 동기화
+      //   // App 수준에서 관리 중인 상태라면
+      alert('프로필이 성공적으로 삭제되었습니다.')
+      navigate('/');
+    } catch (err) {
+      alert('프로필 삭제에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
   };
   if (isLoading) {
@@ -243,7 +238,12 @@ const MyPage = () => {
               </nav>
 
               {/* Logout Button */}
-              <button className="w-full mt-6 flex items-center justify-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300">
+              <button className="w-full mt-6 flex items-center justify-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300"
+                onClick={async() => {
+                  await logout();
+                  navigate('/login');
+                }}
+              >
                 <LogOut className="w-5 h-5" />
                 <span className="font-medium">로그아웃</span>
               </button>
@@ -434,6 +434,13 @@ const MyPage = () => {
                         <button className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300">
                           <div className="font-medium text-gray-800">개인정보처리방침</div>
                           <div className="text-sm text-gray-600">개인정보 수집 및 이용에 대한 안내</div>
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300"
+                          onClick={handleprofiledelete}
+                          >
+                          <div className="font-medium text-gray-800">회원가입 탈퇴</div>
+                          <div className="text-sm text-gray-600">회원탈퇴 시 모든 정보가 사라집니다.</div>
                         </button>
                       </div>
                     </div>
