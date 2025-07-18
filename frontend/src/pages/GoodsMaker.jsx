@@ -19,6 +19,9 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import mugCupImg from '../assets/mug_cup.jpg';
+import tShirtImg from '../assets/t_shirts.png';
+import echoBagImg from '../assets/echo_bag.png';
+import caseImg from '../assets/case.png';
 
 const goodsList = [
   { 
@@ -37,34 +40,7 @@ const goodsList = [
     minQuantity: "1개",
     description: "반팔 티셔츠",
     features: ["100% 면 소재", "다양한 사이즈", "내구성 우수"],
-    img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop"
-  },
-  { 
-    key: "poster", 
-    label: "포스터", 
-    price: "2,000원~",
-    minQuantity: "10개",
-    description: "고화질 포스터",
-    features: ["고해상도 인쇄", "다양한 사이즈", "내광성 우수"],
-    img: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop"
-  },
-  { 
-    key: "phonecase", 
-    label: "폰케이스", 
-    price: "4,500원~",
-    minQuantity: "50개",
-    description: "하드 케이스",
-    features: ["충격 흡수", "정밀 커팅", "다양한 기종"],
-    img: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=400&fit=crop"
-  },
-  { 
-    key: "sticker", 
-    label: "스티커", 
-    price: "1,400원~",
-    minQuantity: "100개",
-    description: "완칼/반칼 스티커",
-    features: ["고품질 PVC", "다양한 사이즈", "내수성 우수"],
-    img: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=400&fit=crop"
+    img: tShirtImg
   },
   { 
     key: "ecobag", 
@@ -73,25 +49,16 @@ const goodsList = [
     minQuantity: "50개",
     description: "면 에코백",
     features: ["100% 면 소재", "내구성 우수", "환경 친화적"],
-    img: "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=400&h=400&fit=crop"
+    img: echoBagImg
   },
-  { 
-    key: "cushion", 
-    label: "쿠션", 
-    price: "6,000원~",
-    minQuantity: "30개",
-    description: "데코 쿠션",
-    features: ["부드러운 터치", "다양한 사이즈", "세탁 가능"],
-    img: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop"
-  },
-  { 
-    key: "keyring", 
-    label: "키링/아크릴", 
-    price: "5,170원~",
+  {
+    key: "case",
+    label: "폰케이스",
+    price: "4,500원~",
     minQuantity: "50개",
-    description: "아크릴 키링",
-    features: ["투명한 아크릴", "정밀 레이저 커팅", "내구성 우수"],
-    img: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=400&h=400&fit=crop"
+    description: "하드 케이스",
+    features: ["충격 흡수", "정밀 커팅", "다양한 기종"],
+    img: caseImg
   },
 ];
 
@@ -122,24 +89,49 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-function drawCylindricalImage(ctx, img, x, y, w, h, ellipseA = 18) {
-  // ellipseA: 타원의 반세로축(픽셀 단위, 컵 입구 타원 곡률)
-  const slices = 320;
+function drawCylindricalImage(ctx, img, x, y, w, h, curve = 20) {
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.08)";
+  ctx.shadowBlur = 3;
+  ctx.globalAlpha = 0.95;
+  ctx.globalCompositeOperation = "multiply";
+  ctx.filter = "saturate(90%) brightness(98%)";
+
+  // 간단하고 안정적인 원통형 렌더링
+  const slices = 200;
+  const sliceWidth = w / slices;
+  
   for (let i = 0; i < slices; i++) {
-    const sx = (img.width / slices) * i;
-    const sw = img.width / slices;
-    const dx = x + (w / slices) * i;
-    const theta = (i / (slices - 1) - 0.5) * Math.PI;
-    // 윗면/아랫면 모두 같은 타원 곡선
-    const yTop = y + ellipseA * Math.sin(theta);
-    const yBottom = y + h + ellipseA * Math.sin(theta);
+    const ratio = i / (slices - 1);
+    const sourceX = img.width * ratio;
+    const sourceWidth = img.width / slices;
+    
+    // 원통형 왜곡 - 세로 위치만 조정
+    const offsetRatio = (ratio - 0.5) * 2;
+    const yOffset = -curve * Math.pow(offsetRatio, 2);
+    
+    const destX = x + i * sliceWidth;
+    const destY = y + yOffset;
+    const destWidth = sliceWidth;
+    const destHeight = h; // 세로 높이는 고정
+    
     ctx.drawImage(
       img,
-      sx, 0, sw, img.height,
-      dx, yTop, w / slices, yBottom - yTop
+      sourceX, 0, sourceWidth, img.height,
+      destX, destY, destWidth, destHeight
     );
   }
+
+  ctx.restore();
+  ctx.filter = "none";
 }
+
+
+
+
 
 export default function GoodsMaker() {
   const query = useQuery();
@@ -157,6 +149,7 @@ export default function GoodsMaker() {
   const fgRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const navigate = useNavigate();
+  const fileInputRef = useRef();
 
   useEffect(() => {
     AOS.init({
@@ -195,16 +188,19 @@ export default function GoodsMaker() {
     bg.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 비율 유지 중앙 정렬
-      const canvasRatio = canvas.width / canvas.height;
+      // 머그컵 배경 이미지를 원본 비율로, width를 캔버스에 맞추고 height를 비율에 맞게(상하 여백만 남게)
       const imgRatio = bg.width / bg.height;
+      const canvasRatio = canvas.width / canvas.height;
       let bgW, bgH, bgX, bgY;
+
       if (imgRatio > canvasRatio) {
+        // 이미지가 더 가로로 김: 높이에 맞추고 좌우 잘라냄
         bgH = canvas.height;
         bgW = canvas.height * imgRatio;
         bgX = (canvas.width - bgW) / 2;
         bgY = 0;
       } else {
+        // 이미지가 더 세로로 김: 너비에 맞추고 상하 잘라냄
         bgW = canvas.width;
         bgH = canvas.width / imgRatio;
         bgX = 0;
@@ -222,8 +218,8 @@ export default function GoodsMaker() {
     const fg = fgRef.current;
 
     // 배경 비율 계산
-    const canvasRatio = canvas.width / canvas.height;
     const imgRatio = bg.width / bg.height;
+    const canvasRatio = canvas.width / canvas.height;
     let bgW, bgH, bgX, bgY;
 
     if (imgRatio > canvasRatio) {
@@ -263,7 +259,65 @@ export default function GoodsMaker() {
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
       y = canvas.height * 0.55 + imgOffset.y;
+      
+      // 티셔츠에 자연스러운 합성 효과 적용
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.08)";
+      ctx.shadowBlur = 2;
+      ctx.globalAlpha = 0.75;
+      ctx.globalCompositeOperation = "multiply";
+      
+      // 티셔츠는 단순하게 그리되 약간의 곡면 효과만 적용
       ctx.drawImage(fg, x, y, w, h);
+      
+      // 티셔츠 질감을 위한 추가 레이어
+      ctx.globalAlpha = 0.25;
+      ctx.globalCompositeOperation = "overlay";
+      ctx.drawImage(fg, x, y, w, h);
+      
+      ctx.restore();
+    } else if (selected.key === 'ecobag') {
+      w = canvas.width * 0.6 * imgScale;
+      h = w;
+      x = (canvas.width - w) / 2 + imgOffset.x;
+      y = canvas.height * 0.38 + imgOffset.y;
+      // 에코백에 자연스러운 합성 효과 적용
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.10)';
+      ctx.shadowBlur = 18;
+      ctx.globalAlpha = 0.93;
+      ctx.globalCompositeOperation = 'multiply';
+      // (선택) 곡면 효과를 주고 싶으면 아래 주석 해제
+      // ctx.transform(1, 0.04, 0, 1, 0, 0);
+      ctx.drawImage(fg, x, y, w, h);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    } else if (selected.key === 'case') {
+      w = canvas.width * 0.25 * imgScale;
+      h = w * 2;
+      x = (canvas.width - w) / 2 + imgOffset.x;
+      y = (canvas.height - h) / 2 + imgOffset.y;
+      // AI 이미지 비율 유지
+      const imgRatio = fg.width / fg.height;
+      const printRatio = w / h;
+      let drawW = w, drawH = h;
+      if (imgRatio > printRatio) {
+        drawW = w;
+        drawH = w / imgRatio;
+      } else {
+        drawH = h;
+        drawW = h * imgRatio;
+      }
+      const drawX = x + (w - drawW) / 2;
+      const drawY = y + (h - drawH) / 2;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.13)';
+      ctx.shadowBlur = 10;
+      ctx.globalAlpha = 0.96;
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(fg, drawX, drawY, drawW, drawH);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     } else {
       // 기타 굿즈별 위치/크기 (필요시 추가)
       w = canvas.width * 0.5 * imgScale;
@@ -273,6 +327,16 @@ export default function GoodsMaker() {
       ctx.drawImage(fg, x, y, w, h);
     }
   }, [imgLoaded, imgScale, imgOffset, selected]);
+
+  useEffect(() => {
+    // 굿즈 종류나 업로드 이미지가 바뀔 때마다 위치/크기 초기화
+    setImgOffset({ x: 0, y: 0 });
+    setImgScale(1);
+    setUploadedImg(null); // 굿즈 바꿀 때 업로드 이미지도 초기화
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [selected.key]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -481,8 +545,8 @@ export default function GoodsMaker() {
                 </div>
                 <canvas
                   ref={canvasRef}
-                  width={400}
-                  height={400}
+                  width={800}
+                  height={450}
                   className="rounded-xl"
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
@@ -504,6 +568,7 @@ export default function GoodsMaker() {
                 accept="image/*"
                 onChange={handleImageChange}
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                ref={fileInputRef}
               />
               <p className="text-xs text-gray-400 mt-1">AI 캐릭터 이미지를 업로드하면 굿즈에 합성됩니다.</p>
             </div>
