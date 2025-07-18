@@ -240,8 +240,11 @@ const MyPage = ({ setIsLoggedIn }) => {
               {/* Logout Button */}
               <button className="w-full mt-6 flex items-center justify-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300"
                 onClick={async() => {
-                  await logout();
-                  navigate('/login');
+                  try {
+                      await logout();             // 서버 로그아웃 요청 + 쿠키 삭제
+                    } finally {
+                      navigate('/login');         // 에러와 관계없이 리다이렉트
+                    }
                 }}
               >
                 <LogOut className="w-5 h-5" />
