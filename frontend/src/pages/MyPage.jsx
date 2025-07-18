@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useLogout } from '../utils/useLogout';
 import axios from 'axios';
 import { 
   User, 
@@ -17,10 +18,10 @@ import {
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
 
-const MyPage = () => {
+const MyPage = ({ setIsLoggedIn }) => {
 
   const navigate = useNavigate();
-
+  const logout = useLogout(setIsLoggedIn);
   const [user, setUser] = useState(null);
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -99,14 +100,14 @@ const MyPage = () => {
   };
 
   useEffect(() => {
-    const handleUserInfo = async () => {
-      const token = localStorage.getItem('jwt')
-      const payload = parseJwt(token);
-      const id = payload.id;
+    handleUserInfo();
+  }, [])
+  const handleUserInfo = async () => {
       try {
-        const res = await axios.get(`http://localhost:8080/users/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(
+      'http://localhost:8080/users/me',
+      { withCredentials: true }
+    );
         console.log(res.data)
         setUser(res.data);
         setName(res.data.name);
@@ -125,24 +126,6 @@ const MyPage = () => {
          setIsLoading(false); 
       }
     };
-    handleUserInfo();
-  }, [])
-
-  function parseJwt(token) {
-    try {
-      const base64Payload = token.split('.')[1]; 
-      const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(decodeURIComponent(
-        jsonPayload
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      ));
-    } catch (e) {
-      console.error('Invalid JWT:', e);
-      return null;
-    }
-  }
 
   const handleSaveProfile = async () => {
     console.log('SAVE START', { isLoading, user });
@@ -153,19 +136,12 @@ const MyPage = () => {
     setUser(optimistic);
     try {
       console.log('ABOUT TO CALL API');
-      const token = localStorage.getItem('jwt')
-      const payload = parseJwt(token);
-      const id = payload.id;
       const res = await axios.put(
-        `http://localhost:8080/users/${id}`,
-        { name, email, phone },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      )
-      setUser(res.data);
+      'http://localhost:8080/users/me',
+      {name, email, phone },
+      { withCredentials: true }
+    );
+      await handleUserInfo();
       alert('프로필이 성공적으로 수정되었습니다.')
     } catch (err) {
       console.error(err);
@@ -179,23 +155,13 @@ const MyPage = () => {
 
   const handleprofiledelete = async () => {
     try {
-      
       console.log('ABOUT TO CALL API');
-      const token = localStorage.getItem('jwt')
-      const payload = parseJwt(token);
-      const id = payload.id;
       const res = await axios.delete(
-        `http://localhost:8080/users/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        `http://localhost:8080/users/me`,
+        { withCredentials: true }
       )
       console.log('API RESPONSE', res.data);
-      localStorage.clear();      // 모든 localStorage 데이터 삭제
-      sessionStorage.clear();    // 모든 sessionStorage 데이터 삭제
-
+      await logout();
       // 3) React 상태 동기화
       //   // App 수준에서 관리 중인 상태라면
       alert('프로필이 성공적으로 삭제되었습니다.')
@@ -272,7 +238,12 @@ const MyPage = () => {
               </nav>
 
               {/* Logout Button */}
-              <button className="w-full mt-6 flex items-center justify-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300">
+              <button className="w-full mt-6 flex items-center justify-center space-x-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-300"
+                onClick={async() => {
+                  await logout();
+                  navigate('/login');
+                }}
+              >
                 <LogOut className="w-5 h-5" />
                 <span className="font-medium">로그아웃</span>
               </button>
