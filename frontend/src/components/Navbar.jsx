@@ -11,7 +11,6 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showCart, setShowCart] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef();
   
@@ -110,13 +109,6 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                   <img src={avatarUrl} alt="마이페이지" className="w-8 h-8 rounded-full border-2 border-blue-400 shadow" />
                   <span className="font-semibold text-gray-800">마이페이지</span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-                <button
-                  className="ml-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200 flex items-center gap-1 border border-gray-200"
-                  onClick={() => setShowCart(true)}
-                >
-                  <ShoppingCart className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-gray-700">장바구니</span>
                 </button>
                 <AnimatePresence>
                   {showDropdown && (
@@ -219,40 +211,6 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Cart Modal */}
-      <Modal open={showCart} onClose={() => setShowCart(false)}>
-        <div className="p-6 min-w-[320px] max-w-[400px]">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-blue-500" /> 장바구니
-          </h2>
-          {/* 장바구니 정보 템플릿 */}
-          <div className="divide-y divide-gray-200">
-            {/* 예시: 실제 데이터로 대체 필요 */}
-            <div className="py-3 flex justify-between items-center">
-              <div>
-                <div className="font-semibold text-gray-800">머그컵</div>
-                <div className="text-xs text-gray-500">수량: 2개</div>
-              </div>
-              <div className="font-bold text-blue-600">7,000원</div>
-            </div>
-            <div className="py-3 flex justify-between items-center">
-              <div>
-                <div className="font-semibold text-gray-800">티셔츠</div>
-                <div className="text-xs text-gray-500">수량: 1개</div>
-              </div>
-              <div className="font-bold text-blue-600">7,040원</div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-between items-center">
-            <span className="font-semibold text-gray-700">총 합계</span>
-            <span className="font-bold text-xl text-blue-700">14,040원</span>
-          </div>
-          <button className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300">
-            주문하기
-          </button>
-        </div>
-      </Modal>
     </nav>
   );
 };
