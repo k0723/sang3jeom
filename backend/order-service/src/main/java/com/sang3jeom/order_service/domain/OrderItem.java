@@ -1,4 +1,4 @@
-package com.sang3jeom.order_service.model;
+package com.sang3jeom.order_service.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;

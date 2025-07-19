@@ -1,6 +1,6 @@
 package com.sang3jeom.order_service.controller;
 
-import com.sang3jeom.order_service.model.Cart;
+import com.sang3jeom.order_service.domain.Cart;
 import com.sang3jeom.order_service.service.CartService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
