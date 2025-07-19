@@ -43,7 +43,7 @@ function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/community/post/:id" element={<CommunityPostDetail />} />
         <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-        <Route path="/pay-success" element={<PaySuccess />} />
+        <Route path="/pay/success" element={<PaySuccess />} />
         <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
       </Routes>
     </BrowserRouter>
