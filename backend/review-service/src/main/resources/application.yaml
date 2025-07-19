@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/review-service
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: p@ssw0rd
+
+  jpa:
+    hibernate:
+      # update: ?????? ?? ? ???? DB ???? ???? ??? ??? ?????.
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
