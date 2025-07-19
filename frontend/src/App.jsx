@@ -17,6 +17,7 @@ import { useState } from "react";
 import OrderPage from "./pages/OrderPage";
 import OrderComplete from "./pages/OrderComplete";
 import Community from "./pages/Community";
+import CommunityPostDetail from "./pages/CommunityPostDetail";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
@@ -39,15 +40,11 @@ function App() {
         {/* <Route path="/admin" element={<Admin />} /> */}
         {/* <Route path="/inquiry" element={<Inquiry />} /> */}
         <Route path="/character-maker" element={<CharacterMaker />} />
-        <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
-        <Route
-          path="/oauth2/redirect"
-          element={
-            <OAuth2RedirectHandler setIsLoggedIn={setIsLoggedIn} />
-          }
-        />
-        <Route path="/pay/success" element={<PaySuccess />} />
         <Route path="/community" element={<Community />} />
+        <Route path="/community/post/:id" element={<CommunityPostDetail />} />
+        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+        <Route path="/pay-success" element={<PaySuccess />} />
+        <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,6 +1,6 @@
 package com.sang3jeom.order_service.service;
 
-import com.sang3jeom.order_service.model.Cart;
+import com.sang3jeom.order_service.domain.Cart;
 import com.sang3jeom.order_service.repository.CartRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
