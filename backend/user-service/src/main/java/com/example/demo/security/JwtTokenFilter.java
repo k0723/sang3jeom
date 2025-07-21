@@ -1,6 +1,9 @@
 package com.example.demo.security;
 
 import com.example.demo.util.JwtTokenProvider;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,6 +11,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.core.Authentication;
+
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
@@ -20,6 +27,8 @@ import java.io.IOException;
 public class JwtTokenFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtProvider;
+    private final RedisTemplate<String, String> redis;
+
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -34,11 +43,31 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
-        String token = jwtProvider.resolveToken(request);
+        String token = resolveToken(request);
         if (token != null && jwtProvider.validateToken(token)) {
-            var authentication = jwtProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            Jws<Claims> parsed = jwtProvider.parseToken(token);
+            String jti = parsed.getBody().getId();
+
+            // 1) 블랙리스트에 등록된 jti인지 체크
+            if (Boolean.TRUE.equals(redis.hasKey("blacklist:" + jti))) {
+                response.sendError(HttpStatus.UNAUTHORIZED.value(), "토큰이 무효화되었습니다.");
+                return;
+            }
+
+            // 2) 통과하면 인증 컨텍스트 설정
+            Authentication auth = jwtProvider.getAuthentication(token);
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
         filterChain.doFilter(request, response);
     }
+
+
+    private String resolveToken(HttpServletRequest req) {
+        String bearer = req.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
+    }
+
 }
