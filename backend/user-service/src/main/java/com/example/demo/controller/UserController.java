@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.UserCreateRequestDTO;
 import com.example.demo.dto.UserDTO;
 import com.example.demo.dto.UserInfoDTO;
+import com.example.demo.dto.UserPasswordDTO;
 import com.example.demo.dto.UserUpdateDTO;
 import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
@@ -17,6 +18,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 
 import java.util.List;
 
@@ -63,5 +66,15 @@ public class UserController {
     public void deleteUser(Authentication authentication) {
         Long userId = (Long) authentication.getDetails();
         svc.delete(userId);
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            Authentication authentication,
+            @RequestBody @Valid UserPasswordDTO dto
+    ) {
+        Long userId = (Long) authentication.getDetails();
+        svc.changePassword(userId, dto);
+        return ResponseEntity.noContent().build();
     }
 }
