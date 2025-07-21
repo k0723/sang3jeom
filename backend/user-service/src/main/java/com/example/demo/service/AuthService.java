@@ -125,4 +125,12 @@ public class AuthService {
             log.warn("Logout attempted for non-existent jti: {}", jti);
         }
     }
+
+    public boolean revokeTokenByJti(String jti) {
+        // 화이트리스트 삭제
+        Boolean deleted = redis.delete(jti);
+        // 블랙리스트에도 올려두면 안전
+        redis.opsForValue().set("bl:" + jti, "revoked", 3600, TimeUnit.SECONDS);
+        return Boolean.TRUE.equals(deleted);
+    }
 }
