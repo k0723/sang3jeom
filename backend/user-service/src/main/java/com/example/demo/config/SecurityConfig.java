@@ -73,6 +73,7 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         // 열어둘 경로
+        .requestMatchers("/admin/**").hasRole("ADMIN")
         .requestMatchers(
           "/signup",
           "/login",
