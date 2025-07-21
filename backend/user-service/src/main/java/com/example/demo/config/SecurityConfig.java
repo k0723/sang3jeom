@@ -88,7 +88,7 @@ public class SecurityConfig {
       // JWT 로그인/토큰 필터
       .addFilterBefore(jwtLoginFilter,
                        UsernamePasswordAuthenticationFilter.class)
-      .addFilterBefore(new JwtTokenFilter(jwtProvider), 
+      .addFilterBefore(new JwtTokenFilter(jwtProvider, redis), 
                        LogoutFilter.class)
       .logout(logout -> logout
       .logoutUrl("/logout")
