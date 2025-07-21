@@ -33,6 +33,12 @@ const MyPage = ({ setIsLoggedIn }) => {
   const [phone, setPhone] = useState('');
   const [createdAt, setCreatedAt] = useState('');
 
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword]   = useState('');
+  const [newPassword, setNewPassword]           = useState('');
+  const [confirmPassword, setConfirmPassword]   = useState('');
+
+
   // 임시 사용자 데이터
 
   const orders = [
@@ -170,6 +176,29 @@ const MyPage = ({ setIsLoggedIn }) => {
       alert('프로필 삭제에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
   };
+
+  const handleChangePasswordSubmit  = async () => {
+    try {
+      console.log('ABOUT TO CALL API');
+      const res = await axios.put(
+        `http://localhost:8080/users/me/password`,
+        {
+          currentPassword,
+          newPassword    
+        },
+        { withCredentials: true }
+      )
+      console.log('API RESPONSE', res.data);
+      // await logout();
+      // 3) React 상태 동기화
+      //   // App 수준에서 관리 중인 상태라면
+      alert('비밀번호가 성공적으로 변경되었습니다.')
+      navigate('/');
+    } catch (err) {
+      alert('비밀번호 변경에 실패했습니다: ' + err.response?.data?.message || err.message)
+    }
+  };
+
   if (isLoading) {
   return <div className="min-h-screen flex items-center justify-center">로딩 중…</div>;
   }
@@ -430,7 +459,10 @@ const MyPage = ({ setIsLoggedIn }) => {
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800 mb-4">개인정보</h3>
                       <div className="space-y-3">
-                        <button className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                        <button 
+                          className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300"
+                          onClick={() => setShowPasswordForm(true)}  
+                        >
                           <div className="font-medium text-gray-800">비밀번호 변경</div>
                           <div className="text-sm text-gray-600">계정 보안을 위해 주기적으로 변경하세요</div>
                         </button>
@@ -448,8 +480,59 @@ const MyPage = ({ setIsLoggedIn }) => {
                       </div>
                     </div>
                   </div>
+                  {showPasswordForm && (
+                    <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center p-6">
+                      <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+                        <h3 className="text-xl font-semibold mb-4">비밀번호 변경</h3>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">현재 비밀번호</label>
+                            <input
+                              type="password"
+                              value={currentPassword}
+                              onChange={e => setCurrentPassword(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">새 비밀번호</label>
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={e => setNewPassword(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">비밀번호 확인</label>
+                            <input
+                              type="password"
+                              value={confirmPassword}
+                              onChange={e => setConfirmPassword(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-6 flex justify-end space-x-3">
+                          <button
+                            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                            onClick={() => setShowPasswordForm(false)}
+                          >
+                            취소
+                          </button>
+                          <button
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            onClick={handleChangePasswordSubmit}
+                          >
+                            변경
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+              
             </motion.div>
           </div>
         </div>
