@@ -43,7 +43,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
-        String token = resolveToken(request);
+        String token = jwtProvider.resolveToken(request);
         if (token != null && jwtProvider.validateToken(token)) {
             Jws<Claims> parsed = jwtProvider.parseToken(token);
             String jti = parsed.getBody().getId();
@@ -59,15 +59,6 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
         filterChain.doFilter(request, response);
-    }
-
-
-    private String resolveToken(HttpServletRequest req) {
-        String bearer = req.getHeader("Authorization");
-        if (bearer != null && bearer.startsWith("Bearer ")) {
-            return bearer.substring(7);
-        }
-        return null;
     }
 
 }
