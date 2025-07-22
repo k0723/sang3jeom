@@ -1,4 +1,4 @@
-package com.sang3jeom.order_service.domain;
+/*package com.sang3jeom.order_service.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -22,4 +22,4 @@ public class OrderItem {
     private Integer quantity;
 
     private String status;
-}
+}*/

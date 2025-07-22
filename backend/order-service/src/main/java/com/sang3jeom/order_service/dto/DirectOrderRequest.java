@@ -7,7 +7,9 @@ import lombok.Setter;
 @Setter
 public class DirectOrderRequest {
     private Integer goodsId;
-    private Integer quantity;
+    private int quantity;
+    private String userName;
+    private long price;
     private Integer userId;
     private String memo; // optional
     private String address; // 배송지 주소
