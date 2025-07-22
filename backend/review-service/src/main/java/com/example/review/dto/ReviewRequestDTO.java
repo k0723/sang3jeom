@@ -9,4 +9,5 @@ import lombok.NoArgsConstructor;
 public class ReviewRequestDTO {
     private String content;
     private Double rating;
+    private String imageUrl;
 }
