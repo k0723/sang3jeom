@@ -89,7 +89,7 @@ public class AuthController {
 
         ResponseCookie accessCookie = ResponseCookie.from("accessToken",  accessToken)
         .httpOnly(true)                      // JS 접근 차단 :contentReference[oaicite:0]{index=0}
-        .secure(true)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
+        .secure(false)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
         .path("/")                           // 도메인 전체에 적용
         .maxAge(Duration.ofSeconds(accessTtlSec))
         .sameSite("none")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
@@ -99,7 +99,7 @@ public class AuthController {
     // 3) HttpOnly + Secure + SameSite 쿠키로 Refresh Token 전달
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
         .httpOnly(true)
-        .secure(true)
+        .secure(false)
         .path("/")              // 리프레시 전용 엔드포인트로 범위 제한 :contentReference[oaicite:3]{index=3}
         .maxAge(Duration.ofSeconds(refreshTtlSec))
         .sameSite("none")
