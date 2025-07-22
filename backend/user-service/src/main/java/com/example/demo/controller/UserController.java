@@ -77,4 +77,12 @@ public class UserController {
         svc.changePassword(userId, dto);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "ID로 단일 사용자 조회 (서비스 간 통신용)")
+    @GetMapping
+    ("/{id}")public ResponseEntity<UserInfoDTO> getUserById(@PathVariable Long id) 
+    {
+         UserInfoDTO dto = svc.findById(id); 
+        return ResponseEntity.ok(dto); 
+    }
 }

@@ -133,4 +133,6 @@ public class AuthService {
         redis.opsForValue().set("bl:" + jti, "revoked", 3600, TimeUnit.SECONDS);
         return Boolean.TRUE.equals(deleted);
     }
+
+    
 }
