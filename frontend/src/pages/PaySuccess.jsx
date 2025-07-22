@@ -26,7 +26,7 @@ export default function PaySuccess() {
     const amount = sessionStorage.getItem("amount");
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
-      fetch("http://localhost:8080/pay/approve", {
+      fetch("http://localhost:8082/pay/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -38,7 +38,7 @@ export default function PaySuccess() {
       })
         .then(res => res.json())
         .then(data => {
-          fetch("http://localhost:8080/orders/direct", {
+          fetch("http://localhost:8082/orders/direct", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
