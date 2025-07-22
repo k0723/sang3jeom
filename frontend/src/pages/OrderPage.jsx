@@ -115,7 +115,7 @@ const OrderPage = () => {
       taxFreeAmount: 0
     };
     try {
-      const res = await fetch("http://localhost:8080/pay/ready", {
+      const res = await fetch("http://localhost:8082/pay/ready", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)

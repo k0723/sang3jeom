@@ -20,4 +20,4 @@ server:
 # user-service 연동 설정
 user:
   service:
-    url: http://localhost:8082
+    url: http://localhost:8080
