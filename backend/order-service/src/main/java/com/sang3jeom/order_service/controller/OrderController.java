@@ -16,7 +16,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping
+/*    @PostMapping
     public ResponseEntity<CreateOrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
         return ResponseEntity.ok(
                 orderService.createOrder(request));
@@ -25,7 +25,7 @@ public class OrderController {
     @PostMapping("/cart")
     public ResponseEntity<CreateOrderResponse> orderFromCart(@RequestBody CartOrderRequest request) {
         return ResponseEntity.ok(orderService.createOrderFromCart(request));
-    }
+    }*/
 
     @PostMapping("/direct")
     public ResponseEntity<CreateOrderResponse> directOrder(@RequestBody DirectOrderRequest request) {
