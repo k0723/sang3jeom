@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.client.UserClient;
 import com.example.demo.dto.UserCreateRequestDTO;
 import com.example.demo.dto.UserDTO;
 import com.example.demo.dto.UserInfoDTO;
@@ -33,6 +34,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService svc;
+    private final UserClient userClient;
 
     @Operation(summary = "모든 사용자 조회")
     @GetMapping
@@ -80,7 +82,9 @@ public class UserController {
 
     @Operation(summary = "ID로 단일 사용자 조회 (서비스 간 통신용)")
     @GetMapping
-    ("/{id}")public ResponseEntity<UserInfoDTO> getUserById(@PathVariable Long id) 
+    ("/{id}")public ResponseEntity<UserInfoDTO> 
+                    getUserById(@PathVariable Long id,
+                    @CookieValue("accessToken") String accessToken)
     {
          UserInfoDTO dto = svc.findById(id); 
         return ResponseEntity.ok(dto); 

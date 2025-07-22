@@ -50,6 +50,10 @@ jwt:
   secret:        ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS}
 
+services:
+  user:
+    url: http://localhost:8081
+
 logging:
   level:
     org.springframework.security: TRACE
