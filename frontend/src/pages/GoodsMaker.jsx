@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import { 
@@ -156,6 +156,7 @@ export default function GoodsMaker() {
   const fgRef = useRef(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const fileInputRef = useRef();
+  const navigate = useNavigate();
 
   const [mugImage, setMugImage] = useState(null);
   const [tshirtImage, setTshirtImage] = useState(null);
@@ -475,6 +476,17 @@ export default function GoodsMaker() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/order', {
+                    state: {
+                      quantity,
+                      label: selected.label,
+                      description: selected.description,
+                      img: selected.img,
+                      price: calculatePrice(),
+                      minQuantity: selected.minQuantity,
+                      features: selected.features
+                    }
+                  })}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기
