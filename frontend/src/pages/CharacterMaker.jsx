@@ -21,6 +21,23 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
+// JWT에서 userId 추출 함수 추가
+function parseJwt(token) {
+  try {
+    const base64Payload = token.split('.')[1];
+    const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decodeURIComponent(
+      jsonPayload
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    ));
+  } catch (e) {
+    console.error('Invalid JWT:', e);
+    return null;
+  }
+}
+
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
       const [preview, setPreview] = useState(null);
@@ -135,6 +152,40 @@ export default function CharacterMaker({ onDone }) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const handleSaveImage = async () => {
+    let jwt = sessionStorage.getItem("jwt");
+    try {
+      // 혹시 객체가 저장되어 있다면 파싱
+      if (jwt && jwt.startsWith("{")) {
+        jwt = JSON.parse(jwt).token;
+      }
+    } catch (e) {}
+    const payload = parseJwt(jwt);
+    const userId = payload && payload.id;
+    if (!userId) {
+      alert("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    if (!result || !result.result_url) {
+      alert("저장할 이미지가 없습니다.");
+      return;
+    }
+    const res = await fetch("/api/ai-images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt}`
+      },
+      body: JSON.stringify({ userId, imageUrl: result.result_url })
+    });
+    if (res.ok) {
+      alert("이미지 저장 성공!");
+    } else {
+      const err = await res.json();
+      alert(err.message || "저장 실패");
     }
   };
 
@@ -349,13 +400,13 @@ export default function CharacterMaker({ onDone }) {
                       다운로드
                     </motion.button>
                     <motion.button
-                      onClick={handleGoToGoodsMaker}
+                      onClick={handleSaveImage}
                       className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <Heart className="w-5 h-5 inline mr-2" />
-                      굿즈 제작하기
+                      이미지 저장
                     </motion.button>
                   </div>
                 </div>
