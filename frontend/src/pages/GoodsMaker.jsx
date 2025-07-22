@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import { 
@@ -22,7 +22,6 @@ import mugCupImg from '../assets/mug_cup.jpg';
 import tShirtImg from '../assets/t_shirts.png';
 import echoBagImg from '../assets/echo_bag.png';
 import caseImg from '../assets/case.png';
-
 
 const goodsList = [
   { 
@@ -90,7 +89,6 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-
 function drawCylindricalImage(ctx, img, x, y, w, h, curve = 20) {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -143,7 +141,7 @@ export default function GoodsMaker() {
   const [selectedOptions, setSelectedOptions] = useState({});
   const canvasRef = useRef();
   const [uploadedImg, setUploadedImg] = useState(null);
-  const [imgScale, setImgScale] = useState(0.4); // 40%로 시작
+  const [imgScale, setImgScale] = useState(1); // 1 = 100%
   const [imgOffset, setImgOffset] = useState({ x: 0, y: 0 }); // x, y는 px 단위 오프셋
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
@@ -162,29 +160,13 @@ export default function GoodsMaker() {
   }, []);
 
   useEffect(() => {
-    // 굿즈를 바꿀 때마다 파일 input도 초기화
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [selected]);
-
-  const getCurrentImage = () => {
-    switch(selected.key) {
-      case 'mug': return mugImage;
-      case 'tshirt': return tshirtImage;
-      // ... 기타 굿즈
-      default: return null;
-    }
-  };
-
-  useEffect(() => {
     setImgLoaded(false);
     const bg = new window.Image();
     const fg = new window.Image();
     bg.crossOrigin = "anonymous";
     fg.crossOrigin = "anonymous";
     bg.src = selected.img;
-    fg.src = getCurrentImage() || aiImg;
+    fg.src = uploadedImg || aiImg;
     bg.onload = () => {
       fg.onload = () => {
         bgRef.current = bg;
@@ -192,7 +174,7 @@ export default function GoodsMaker() {
         setImgLoaded(true);
       };
     };
-  }, [selected, mugImage, tshirtImage, aiImg]);
+  }, [uploadedImg, aiImg, selected]);
 
   // 굿즈 배경만 그리는 useEffect
   useEffect(() => {
@@ -260,31 +242,19 @@ export default function GoodsMaker() {
     // 굿즈 종류별로 위치/크기 다르게
     let x, y, w, h;
     if (selected.key === 'mug') {
-      w = canvas.width * 0.4 * imgScale; // 40%로 줄임
+      w = canvas.width * 0.5 * imgScale;
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
       y = canvas.height * 0.35 + imgOffset.y;
-
-      // 비율 유지하며 drawImage
-      const imgRatio = fg.width / fg.height;
-      let drawW = w, drawH = h;
-      if (imgRatio > 1) {
-        drawH = w / imgRatio;
-        y += (h - drawH) / 2;
-      } else {
-        drawW = h * imgRatio;
-        x += (w - drawW) / 2;
-      }
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.10)"; // 약한 그림자
       ctx.shadowBlur = 8;
       ctx.globalAlpha = 0.92; // 약간 투명
       ctx.globalCompositeOperation = "multiply"; // 컵과 자연스럽게 섞임
-      drawCylindricalImage(ctx, fg, x, y, w, h, 10, 20); // 윗변 10, 아랫변 20
+      drawCylindricalImage(ctx, fg, x, y, w, h, );
       ctx.globalCompositeOperation = "source-over"; // 원래대로 복구
       ctx.restore();
     } else if (selected.key === 'tshirt') {
-
       w = canvas.width * 0.6 * imgScale;
       h = w;
       x = (canvas.width - w) / 2 + imgOffset.x;
@@ -371,12 +341,7 @@ export default function GoodsMaker() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      switch(selected.key) {
-        case 'mug': setMugImage(url); break;
-        case 'tshirt': setTshirtImage(url); break;
-        // ... 기타 굿즈
-      }
+      setUploadedImg(URL.createObjectURL(file));
     }
   };
 
@@ -414,9 +379,48 @@ export default function GoodsMaker() {
     return (basePrice * quantity).toLocaleString();
   };
 
+  // 결제창 띄우기 함수
+  const handleOrder = () => {
+    navigate("/order", { state: { product: {
+      name: selected.label,
+      desc: selected.description,
+      option: `${quantity}개`,
+      price: parseInt(selected.price.replace(/[^0-9]/g, '')),
+      image: uploadedImg || aiImg || selected.img,
+      quantity: quantity,
+    } } });
+  };
+
+  // 장바구니 추가 함수
+  const handleAddToCart = async () => {
+    // TODO: 실제 로그인 유저ID로 대체 필요
+    const userId = 1;
+    const goodsId = selected.key; // 실제 goodsId로 대체 필요
+    const quantityValue = quantity;
+    try {
+      const res = await fetch("http://localhost:8080/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: 0,
+          goodsId: 0,
+          quantity: Number(quantity)
+        })
+      });
+      const data = await res.json();
+      if (data.cartId) {
+        sessionStorage.setItem("cart_id", data.cartId);
+        alert("장바구니에 추가되었습니다!");
+      } else {
+        alert("장바구니 추가 실패: " + (data.message || ""));
+      }
+    } catch (e) {
+      alert("장바구니 추가 중 오류 발생");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <Navbar />
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -504,6 +508,7 @@ export default function GoodsMaker() {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={handleOrder}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기
@@ -543,7 +548,6 @@ export default function GoodsMaker() {
                   width={800}
                   height={450}
                   className="rounded-xl"
-                  style={{ width: '100%', height: 'auto' }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
@@ -560,7 +564,6 @@ export default function GoodsMaker() {
             <div className="mb-6 flex flex-col items-center">
               <label className="block mb-2 text-gray-700 font-semibold">AI 캐릭터 이미지 업로드 (테스트용)</label>
               <input
-                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
