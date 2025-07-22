@@ -509,6 +509,17 @@ export default function GoodsMaker() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleOrder}
+                  // onClick={() => navigate('/order', {
+                  //   state: {
+                  //     quantity,
+                  //     label: selected.label,
+                  //     description: selected.description,
+                  //     img: selected.img,
+                  //     price: calculatePrice(),
+                  //     minQuantity: selected.minQuantity,
+                  //     features: selected.features
+                  //   }
+                  // })}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
                   주문하기

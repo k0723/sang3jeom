@@ -7,13 +7,26 @@ import Modal from "../components/Modal";
 const OrderPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const product = location.state?.product || {
-    name: "에이센트ASCENT",
-    desc: "에이센트 대용량 디퓨저 500ml 실내방향제 집들이선물 그린에어리 인테리어",
-    option: "단품 [3개 구매시 3+1+사은품] / 1딥체리",
-    price: 12900,
-    image: "/assets/dog-cat.png",
-    quantity: 1,
+  const {
+    label,
+    description,
+    img,
+    price,
+    minQuantity,
+    features,
+    quantity
+  } = location.state || {};
+
+  const totalPrice = price ? parseInt(price.toString().replace(/[^0-9]/g, "")) : 12900;
+  const unitPrice = quantity ? Math.round(totalPrice / quantity) : totalPrice;
+  const product = {
+    name: label || "에이센트ASCENT",
+    desc: description || "에이센트 대용량 디퓨저 500ml 실내방향제 집들이선물 그린에어리 인테리어",
+    option: quantity ? ` ${quantity}개` : "수량: 1개",
+    price: totalPrice,
+    image: img || "/assets/dog-cat.png",
+    quantity: quantity || 1,
+    features: features || []
   };
   // user 객체를 state로 관리
   const [userInfo, setUserInfo] = useState({
@@ -98,6 +111,10 @@ const OrderPage = () => {
     return (product.price * (product.quantity || 1)).toLocaleString();
   };
 
+  const calculateTotalPrice = () => {
+    return (product.price * product.quantity).toLocaleString();
+  };
+
   const handleKakaoPay = async () => {
     // 배송지/메모/이메일/수령인/연락처/금액 sessionStorage 저장
     sessionStorage.setItem("address", address1);
@@ -105,13 +122,13 @@ const OrderPage = () => {
     sessionStorage.setItem("email", email);
     sessionStorage.setItem("receiver", receiver);
     sessionStorage.setItem("phone", phone);
-    sessionStorage.setItem("amount", (product.price * (product.quantity || 1)).toString());
+    sessionStorage.setItem("amount", product.price.toString()); // 총금액만 저장
     const requestBody = {
       partnerOrderId: `ORDER_${Date.now()}`,
       partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체
       itemName: product.name,
       quantity: product.quantity || 1,
-      totalAmount: product.price * (product.quantity || 1),
+      totalAmount: product.price, // 총금액만 사용
       taxFreeAmount: 0
     };
     try {
@@ -275,15 +292,15 @@ const OrderPage = () => {
               <div>
                 <div className="font-semibold">{product.name}</div>
                 <div className="text-sm text-gray-600">{product.desc}</div>
-                <div className="text-xs text-gray-500">옵션: {product.option}</div>
+                <div className="text-xs text-gray-500">수량: {product.option}</div>
               </div>
             </div>
             {/* 가격/총금액 레이아웃 */}
             <div className="flex justify-between items-end mt-2">
               <div>
-                <span className="text-base font-semibold text-gray-800">개당:{product.price.toLocaleString()}원</span>
+                <span className="text-base font-semibold text-gray-800">개당:{unitPrice.toLocaleString()}원</span>
               </div>
-              <span className="text-lg font-bold text-green-600">{calculatePrice()}원</span>
+              <span className="text-lg font-bold text-green-600">{totalPrice.toLocaleString()}원</span>
             </div>
             {/* 제작/배송 기간 */}
             <div className="flex gap-6 mt-2 text-xs text-gray-500">
@@ -296,7 +313,7 @@ const OrderPage = () => {
           <div className="bg-green-100 rounded-lg shadow p-4 mb-6">
             <div className="flex justify-between items-center mb-4">
               <span className="font-bold">총 주문금액</span>
-              <span className="text-xl font-bold text-green-700">{calculatePrice()}원</span>
+              <span className="text-xl font-bold text-green-700">{totalPrice.toLocaleString()}원</span>
             </div>
             <div className="flex gap-4">
               <button

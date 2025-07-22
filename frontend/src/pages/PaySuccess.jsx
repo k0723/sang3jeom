@@ -24,6 +24,8 @@ export default function PaySuccess() {
     const phone = sessionStorage.getItem("phone") || "010-1234-5678";
     const email = sessionStorage.getItem("email") || "seul1234@gmail.com";
     const amount = sessionStorage.getItem("amount");
+    const price = sessionStorage.getItem("amount");
+    const userName = sessionStorage.getItem("receiver") || "홍길동";
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
       fetch("http://localhost:8082/pay/approve", {
@@ -46,7 +48,9 @@ export default function PaySuccess() {
               quantity: Number(quantity),
               userId: Number(userId),
               address: address,
-              memo: memo
+              memo: memo,
+              price: price ? Number(price) : 1, // 가격 정보 추가
+              userName: userName    // 주문자 이름 추가
             })
           })
             .then(res => res.json())
