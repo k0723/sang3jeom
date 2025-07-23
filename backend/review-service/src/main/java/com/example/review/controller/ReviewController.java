@@ -4,6 +4,10 @@ import com.example.review.dto.ReviewRequestDTO;
 import com.example.review.dto.ReviewResponseDTO;
 import com.example.review.service.ReviewService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,25 +36,28 @@ public class ReviewController {
     }
 
     /**
-     * 모든 리뷰 조회
+     * 리뷰 조회
      * @return 리뷰 목록
      */
     @GetMapping
-    public ResponseEntity<List<ReviewResponseDTO>> getAllReviews() {
-        List<ReviewResponseDTO> reviews = reviewService.findAllReviews();
-        return ResponseEntity.ok(reviews);
+    public ResponseEntity<Page<ReviewResponseDTO>> getReviews(
+            // page: 페이지 번호 (0부터 시작), size: 페이지 당 개수
+            // sort: 정렬 기준 (createdAt), direction: 정렬 방향 (내림차순)
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(reviewService.findReviewsByPage(pageable));
     }
 
-    /**
-     * 특정 리뷰 단건 조회
-     * @param reviewId 조회할 리뷰 ID
-     * @return 특정 리뷰 정보
-     */
-    @GetMapping("/{reviewId}")
-    public ResponseEntity<ReviewResponseDTO> getReviewById(@PathVariable Long reviewId) {
-        ReviewResponseDTO review = reviewService.findReviewById(reviewId);
-        return ResponseEntity.ok(review);
-    }
+//    /**
+//     * 특정 리뷰 단건 조회
+//     * @param reviewId 조회할 리뷰 ID
+//     * @return 특정 리뷰 정보
+//     */
+//    @GetMapping("/{reviewId}")
+//    public ResponseEntity<ReviewResponseDTO> getReviewById(@PathVariable Long reviewId) {
+//        ReviewResponseDTO review = reviewService.findReviewById(reviewId);
+//        return ResponseEntity.ok(review);
+//    }
 
     /**
      * 리뷰 수정 (본인만 가능)

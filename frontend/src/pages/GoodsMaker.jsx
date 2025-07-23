@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import ReviewForm from '../components/ReviewForm.jsx';
+import ReviewSection from '../components/ReviewSection';
 import { 
   ShoppingCart, 
   Download, 
@@ -655,44 +656,46 @@ export default function GoodsMaker() {
             {/* Reviews Section */}
             <ReviewForm />
 
-            <motion.div 
-              className="bg-white rounded-2xl shadow-lg p-6"
-              data-aos="fade-up"
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-6">고객 후기</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center mb-3">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-gray-600">5.0</span>
-                  </div>
-                  <p className="text-gray-700 mb-3">
-                    "퀄리티가 정말 좋아요! AI로 만든 캐릭터가 너무 귀엽게 나왔습니다."
-                  </p>
-                  <div className="text-sm text-gray-500">- 김**님 (티셔츠 제작)</div>
-                </div>
-                
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center mb-3">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-gray-600">5.0</span>
-                  </div>
-                  <p className="text-gray-700 mb-3">
-                    "빠른 제작과 배송에 만족합니다. 다음에도 이용할 예정이에요!"
-                  </p>
-                  <div className="text-sm text-gray-500">- 이**님 (머그컵 제작)</div>
-                </div>
-              </div>
-            </motion.div>
+            <ReviewSection />
+
+            {/*<motion.div */}
+            {/*  className="bg-white rounded-2xl shadow-lg p-6"*/}
+            {/*  data-aos="fade-up"*/}
+            {/*>*/}
+            {/*  <h2 className="text-xl font-bold text-gray-800 mb-6">고객 후기</h2>*/}
+            {/*  */}
+            {/*  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">*/}
+            {/*    <div className="p-4 border border-gray-200 rounded-lg">*/}
+            {/*      <div className="flex items-center mb-3">*/}
+            {/*        <div className="flex text-yellow-400">*/}
+            {/*          {[...Array(5)].map((_, i) => (*/}
+            {/*            <Star key={i} className="w-4 h-4 fill-current" />*/}
+            {/*          ))}*/}
+            {/*        </div>*/}
+            {/*        <span className="ml-2 text-sm text-gray-600">5.0</span>*/}
+            {/*      </div>*/}
+            {/*      <p className="text-gray-700 mb-3">*/}
+            {/*        "퀄리티가 정말 좋아요! AI로 만든 캐릭터가 너무 귀엽게 나왔습니다."*/}
+            {/*      </p>*/}
+            {/*      <div className="text-sm text-gray-500">- 김**님 (티셔츠 제작)</div>*/}
+            {/*    </div>*/}
+            {/*    */}
+            {/*    <div className="p-4 border border-gray-200 rounded-lg">*/}
+            {/*      <div className="flex items-center mb-3">*/}
+            {/*        <div className="flex text-yellow-400">*/}
+            {/*          {[...Array(5)].map((_, i) => (*/}
+            {/*            <Star key={i} className="w-4 h-4 fill-current" />*/}
+            {/*          ))}*/}
+            {/*        </div>*/}
+            {/*        <span className="ml-2 text-sm text-gray-600">5.0</span>*/}
+            {/*      </div>*/}
+            {/*      <p className="text-gray-700 mb-3">*/}
+            {/*        "빠른 제작과 배송에 만족합니다. 다음에도 이용할 예정이에요!"*/}
+            {/*      </p>*/}
+            {/*      <div className="text-sm text-gray-500">- 이**님 (머그컵 제작)</div>*/}
+            {/*    </div>*/}
+            {/*  </div>*/}
+            {/*</motion.div>*/}
           </div>
         </div>
       </div>
