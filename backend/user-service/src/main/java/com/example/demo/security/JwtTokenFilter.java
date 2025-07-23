@@ -16,12 +16,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
 /**
  * 요청마다 JWT 토큰을 확인하여 유효하면 SecurityContext에 Authentication 객체를 세팅합니다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtTokenFilter extends OncePerRequestFilter {
@@ -44,6 +46,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
         String token = jwtProvider.resolveToken(request);
+        log.trace("JWT token={}", token);
         if (token != null && jwtProvider.validateToken(token)) {
             Jws<Claims> parsed = jwtProvider.parseToken(token);
             String jti = parsed.getBody().getId();
