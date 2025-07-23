@@ -6,7 +6,7 @@ import com.example.demo.dto.JwtResponseDTO;
 import com.example.demo.dto.UserDTO;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.JwtTokenProvider;
-
+import com.example.demo.dto.JwtResponseDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 
@@ -43,39 +43,18 @@ public class AuthService {
     private final PasswordEncoder   passwordEncoder;
     private final RedisTemplate<String,String> redis;
 
-    @Value("${jwt.expiration-ms}")
-    private long expirationMs;
 
     /**
      * 로컬 로그인: 이메일/비밀번호 검증 후 JWT 발급
      */
-    @Transactional(rollbackOn = Exception.class)
-    public JwtResponseDTO loginAndGetToken(LoginRequestDTO req) {
+    @Transactional
+    public UserEntity login(LoginRequestDTO req) {
         UserEntity user = userRepo.findByEmail(req.getEmail())
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 틀렸습니다."));
-
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 틀렸습니다."));
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 틀렸습니다.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 틀렸습니다.");
         }
-
-        String accessToken = jwtProvider.createAccessToken(user.getEmail(), user.isRoles(), user.getId());
-        String refreshToken = jwtProvider.createRefreshToken(user.getEmail(), user.getId());
-        log.info("User '{}' logged in, JWT issued", user.getEmail());
-
-        Jws<Claims> parsed = jwtProvider.parseToken(refreshToken);
-        String jti        = parsed.getBody().getId();
-        Date expiry       = parsed.getBody().getExpiration();
-        long ttlSeconds   = (expiry.getTime() - System.currentTimeMillis()) / 1000;
-        redis.opsForValue().set(jti, String.valueOf(user.getId()), ttlSeconds, TimeUnit.SECONDS);
-
-        return JwtResponseDTO.builder()
-            .accessToken(accessToken)
-            .accessExpiresIn(jwtProvider.getAccessExpiryMs())
-            .refreshToken(refreshToken)
-            .refreshExpiresIn(jwtProvider.getRefreshExpiryMs())
-            .build();
+        return user;
     }
 
     /**
@@ -83,20 +62,21 @@ public class AuthService {
      * 신규 사용자면 회원가입, 기존 사용자면 조회 후 DTO 반환
      */
     @Transactional
-    public UserDTO processOAuthPostLogin(OAuth2User oauthUser) {
+    public UserEntity processOAuthPostLogin(OAuth2User oauthUser) {
         String email = oauthUser.getAttribute("email");
-        UserEntity user = userRepo.findByEmail(email)
-            .orElseGet(() -> {
-                UserEntity newUser = UserEntity.builder()
-                    .email(email)
-                    .name(oauthUser.getAttribute("name"))
-                    .roles(false)
-                    .profileImageUrl(oauthUser.getAttribute("picture"))
-                    .build();
-                log.info("New OAuth2 user registered: {}", email);
-                return userRepo.save(newUser);
-            });
-        return UserDTO.fromOAuth2(user);
+        return userRepo.findByEmail(email)
+                .orElseGet(() -> {
+                    UserEntity newUser = UserEntity.builder()
+                            .email(email)
+                            .username(oauthUser.getAttribute("name"))
+                            .name(oauthUser.getAttribute("name"))
+                            .passwordHash("")
+                            .roles(false)
+                            .profileImageUrl(oauthUser.getAttribute("picture"))
+                            .build();
+                    log.info("New OAuth2 user registered: {}", email);
+                    return userRepo.save(newUser);
+                });
     }
 
     /**
