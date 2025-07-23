@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.example.demo.service.TokenService;
 
 import com.example.demo.service.AuthService;
 
@@ -18,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/admin/tokens")
 @RequiredArgsConstructor
 public class AdminTokenController {
-  private final AuthService authService;
+  private final TokenService tokenService;
 
   /**
    * HTTP DELETE /admin/tokens/{jti}
@@ -27,13 +28,7 @@ public class AdminTokenController {
   @DeleteMapping("/{jti}")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<?> revokeToken(@PathVariable String jti) {
-    boolean existed = authService.revokeTokenByJti(jti);
-    if (existed) {
-      return ResponseEntity.noContent().build();
-    } else {
-      // 이미 없던 토큰이라면 404 리턴
-      return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                           .body(Map.of("error", "Token JTI not found"));
-    }
+    tokenService.revokeTokenByJti(jti);
+    return ResponseEntity.noContent().build();
   }
 }

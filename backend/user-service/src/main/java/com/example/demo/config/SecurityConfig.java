@@ -6,6 +6,7 @@ import com.example.demo.util.OAuth2SuccessHandler;
 import com.example.demo.security.CustomLogoutHandler;
 import com.example.demo.util.JwtLoginFilter;
 import com.example.demo.util.JwtTokenProvider;
+import com.example.demo.service.TokenService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -53,30 +54,29 @@ public class SecurityConfig {
   @Order(1)
   public SecurityFilterChain apiAndCatchAllChain(HttpSecurity http,
                                                  AuthenticationManager authManager,
-                                                 JwtTokenProvider jwtProvider,
-                                                 JwtConfig jwtConfig) throws Exception {
+                                                 TokenService tokenService
+                                                 ) throws Exception {
 
     JwtLoginFilter jwtLoginFilter = new JwtLoginFilter(
         authManager,
-        jwtConfig.jwtSuccessHandler(),
-        new SimpleUrlAuthenticationFailureHandler()
+        tokenService
     );
 
-    AuthenticationEntryPoint restAuthEntryPoint = (request, response, authException) -> {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("""
+    AuthenticationEntryPoint restAuthEntryPoint = (req, res, ex) -> {
+        res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("""
             {"error":"UNAUTHORIZED","message":"%s"}
-            """.formatted(authException.getMessage()));
+            """.formatted(ex.getMessage()));
     };
 
     // 2) 권한 거부 시 403 JSON 반환 (옵션)
-    AccessDeniedHandler restAccessDeniedHandler = (request, response, accessDeniedException) -> {
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("""
+    AccessDeniedHandler restAccessDeniedHandler = (req, res, ex) -> {
+        res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write("""
             {"error":"FORBIDDEN","message":"%s"}
-            """.formatted(accessDeniedException.getMessage()));
+            """.formatted(ex.getMessage()));
     };
 
     http
@@ -106,7 +106,7 @@ public class SecurityConfig {
       // JWT 로그인/토큰 필터
       .addFilterBefore(jwtLoginFilter,
                        UsernamePasswordAuthenticationFilter.class)
-      .addFilterBefore(new JwtTokenFilter(jwtProvider, redis), 
+      .addFilterBefore(jwtTokenFilter, 
                        LogoutFilter.class)
       .logout(logout -> logout
       .logoutUrl("/logout")
@@ -124,7 +124,8 @@ public class SecurityConfig {
   @Order(2)
   public SecurityFilterChain oauth2LoginChain(HttpSecurity http,
                                               CustomOAuth2UserService userService,
-                                              OAuth2SuccessHandler successHandler) throws Exception {
+                                              OAuth2SuccessHandler oauth2SuccessHandler) throws Exception 
+                                              {
     http
       .securityMatcher("/oauth2/**", "/oauth2/redirection/*", "/error")
       .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -136,8 +137,12 @@ public class SecurityConfig {
          .authorizationEndpoint(ae -> ae.baseUri("/oauth2/authorization"))
          .redirectionEndpoint(re -> re.baseUri("/oauth2/redirection/*"))
          .userInfoEndpoint(ui -> ui.userService(userService))
-         .successHandler(successHandler)
-         .failureUrl("/oauth2/authorization/google?error")
+         .successHandler((req, res, auth) -> {
+              System.out.println(">>> inline success handler start");
+              oauth2SuccessHandler.onAuthenticationSuccess(req, res, auth);
+              System.out.println(">>> inline success handler end");
+          })
+        .failureUrl("/oauth2/authorization/google?error")
       )
     ;
     return http.build();
@@ -146,9 +151,7 @@ public class SecurityConfig {
   // JWT 로그인 성공 시 JSON 응답으로 토큰을 내려주는 핸들러
   private org.springframework.security.web.authentication.AuthenticationSuccessHandler jwtSuccessHandler(JwtTokenProvider jwtProvider) {
     return (req, res, auth) -> {
-      String token = jwtProvider.generateToken(auth);
       res.setContentType("application/json");
-      res.getWriter().write("{\"token\":\"" + token + "\"}");
     };
   }
 
