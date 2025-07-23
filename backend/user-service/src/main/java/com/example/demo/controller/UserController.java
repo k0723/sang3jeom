@@ -1,8 +1,10 @@
 package com.example.demo.controller;
 
+import com.example.demo.client.UserClient;
 import com.example.demo.dto.UserCreateRequestDTO;
 import com.example.demo.dto.UserDTO;
 import com.example.demo.dto.UserInfoDTO;
+import com.example.demo.dto.UserPasswordDTO;
 import com.example.demo.dto.UserUpdateDTO;
 import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
@@ -17,6 +19,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 
 import java.util.List;
 
@@ -30,6 +34,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService svc;
+    private final UserClient userClient;
 
     @Operation(summary = "모든 사용자 조회")
     @GetMapping
@@ -63,5 +68,25 @@ public class UserController {
     public void deleteUser(Authentication authentication) {
         Long userId = (Long) authentication.getDetails();
         svc.delete(userId);
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            Authentication authentication,
+            @RequestBody @Valid UserPasswordDTO dto
+    ) {
+        Long userId = (Long) authentication.getDetails();
+        svc.changePassword(userId, dto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "ID로 단일 사용자 조회 (서비스 간 통신용)")
+    @GetMapping
+    ("/{id}")public ResponseEntity<UserInfoDTO> 
+                    getUserById(@PathVariable Long id,
+                    @CookieValue("accessToken") String accessToken)
+    {
+         UserInfoDTO dto = svc.findById(id); 
+        return ResponseEntity.ok(dto); 
     }
 }
