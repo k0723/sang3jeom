@@ -92,7 +92,7 @@ public class AuthController {
         .secure(false)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
         .path("/")                           // 도메인 전체에 적용
         .maxAge(Duration.ofSeconds(accessTtlSec))
-        .sameSite("none")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
+        .sameSite("Lax")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
         .build();
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
@@ -102,7 +102,7 @@ public class AuthController {
         .secure(false)
         .path("/")              // 리프레시 전용 엔드포인트로 범위 제한 :contentReference[oaicite:3]{index=3}
         .maxAge(Duration.ofSeconds(refreshTtlSec))
-        .sameSite("none")
+        .sameSite("Lax")
         .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
