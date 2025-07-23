@@ -32,13 +32,6 @@ dependencyManagement {
 
 dependencies {
 
-	implementation "net.devh:grpc-server-spring-boot-starter:${grpcSpringBootVersion}"
-    implementation "net.devh:grpc-client-spring-boot-starter:${grpcSpringBootVersion}"
-
-    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
-    implementation "io.grpc:grpc-stub:${grpcVersion}"
-    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
-
 	//openfegin
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 	//redis 
