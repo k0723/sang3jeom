@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
+import ReviewForm from '../components/ReviewForm.jsx';
 import { 
   ShoppingCart, 
   Download, 
@@ -652,6 +653,8 @@ export default function GoodsMaker() {
             </motion.div>
 
             {/* Reviews Section */}
+            <ReviewForm />
+
             <motion.div 
               className="bg-white rounded-2xl shadow-lg p-6"
               data-aos="fade-up"

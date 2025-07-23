@@ -1,0 +1,36 @@
+server:
+  port: 8084
+
+spring:
+# DB 접속 정보
+  datasource:
+    url: jdbc:mysql://localhost:3306/review-service
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: p@ssw0rd
+# JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+# OpenFeign 로컬 테스트용
+  profiles:
+    active: local # 기본 활성 프로필을 local로 지정
+
+# Feign Client가 호출할 user-service의 로컬 주소를 직접 지정
+service-urls:
+  user-service: http://localhost:8082
+
+# S3 버킷 정보 & AWS 자격 증명
+cloud:
+  aws:
+    s3:
+      bucket: 's3://sang3jeomtest/review-service-image/'
+    credentials:
+      access-key: YOUR_ACCESS_KEY
+      secret-key: YOUR_SECRET_KEY
+    region:
+      static: ap-northeast-2
