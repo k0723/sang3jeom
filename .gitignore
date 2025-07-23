@@ -1,3 +1,9 @@
+# Gradle 캐시 및 빌드 산출물 무시
+.gradle/
+build/
+**/build/
+**/.gradle/
+
 # Logs
 logs
 *.log
