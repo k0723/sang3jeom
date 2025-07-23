@@ -57,3 +57,9 @@ services:
 logging:
   level:
     org.springframework.security: TRACE
+
+grpc:
+  server:
+    security:
+      enabled: false
+    
