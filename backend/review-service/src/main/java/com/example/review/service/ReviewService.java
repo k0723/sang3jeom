@@ -7,6 +7,8 @@ import com.example.review.domain.Review;
 import com.example.review.repository.ReviewRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
@@ -72,19 +75,18 @@ public class ReviewService {
         reviewRepository.delete(review);
     }
 
+//    // 리뷰 조회
+//    @Transactional(readOnly = true)
+//    public ReviewResponseDTO findReviewById(Long reviewId) {
+//        Review review = reviewRepository.findById(reviewId)
+//                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 리뷰입니다. ID: " + reviewId));
+//        return new ReviewResponseDTO(review);
+//    }
+
     // 리뷰 조회
     @Transactional(readOnly = true)
-    public ReviewResponseDTO findReviewById(Long reviewId) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 리뷰입니다. ID: " + reviewId));
-        return new ReviewResponseDTO(review);
-    }
-
-    // 리뷰 전체 조회
-    @Transactional(readOnly = true)
-    public List<ReviewResponseDTO> findAllReviews() {
-        return reviewRepository.findAll().stream()
-                .map(ReviewResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<ReviewResponseDTO> findReviewsByPage(Pageable pageable) {
+        // repository.findAll(pageable)은 Page<Review>를 반환합니다.
+        return reviewRepository.findAll(pageable).map(ReviewResponseDTO::new);
     }
 }
