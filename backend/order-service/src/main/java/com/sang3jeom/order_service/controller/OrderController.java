@@ -28,7 +28,10 @@ public class OrderController {
     }*/
 
     @PostMapping("/direct")
-    public ResponseEntity<CreateOrderResponse> directOrder(@RequestBody DirectOrderRequest request) {
-        return ResponseEntity.ok(orderService.createDirectOrder(request));
+    public ResponseEntity<CreateOrderResponse> directOrder(
+            @RequestBody DirectOrderRequest request,
+            @RequestHeader("Authorization") String authorizationHeader // 토큰 받기
+    ) {
+        return ResponseEntity.ok(orderService.createDirectOrder(request, authorizationHeader));
     }
 }
