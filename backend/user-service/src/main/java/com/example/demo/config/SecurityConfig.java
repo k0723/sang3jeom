@@ -29,17 +29,19 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.web.util.WebUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import jakarta.servlet.http.Cookie; 
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
-
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
   private final JwtTokenProvider jwtProvider;
   private final JwtTokenFilter jwtTokenFilter;
