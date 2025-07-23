@@ -33,11 +33,13 @@ const MyPage = ({ setIsLoggedIn }) => {
   const [phone, setPhone] = useState('');
   const [createdAt, setCreatedAt] = useState('');
 
+
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword]   = useState('');
   const [newPassword, setNewPassword]           = useState('');
   const [confirmPassword, setConfirmPassword]   = useState('');
 
+  const [aiImages, setAiImages] = useState([]);
 
   // 임시 사용자 데이터
 
@@ -83,6 +85,7 @@ const MyPage = ({ setIsLoggedIn }) => {
   const tabs = [
     { id: 'profile', name: '프로필', icon: User },
     { id: 'orders', name: '주문내역', icon: ShoppingBag },
+    { id: 'ai', name: 'AI 캐릭터', icon: Star }, // AI 캐릭터 탭 추가
     { id: 'favorites', name: '찜한 상품', icon: Heart },
     { id: 'settings', name: '설정', icon: Settings }
   ];
@@ -177,6 +180,7 @@ const MyPage = ({ setIsLoggedIn }) => {
     }
   };
 
+
   const handleChangePasswordSubmit  = async () => {
     try {
       console.log('ABOUT TO CALL API');
@@ -198,6 +202,24 @@ const MyPage = ({ setIsLoggedIn }) => {
       alert('비밀번호 변경에 실패했습니다: ' + err.response?.data?.message || err.message)
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'ai' && user) {
+      const fetchImages = async () => {
+        const jwt = sessionStorage.getItem("jwt");
+        const userId = user?.id || 1;
+        const res = await fetch(`/api/ai-images/user/${userId}`, {
+          headers: { "Authorization": `Bearer ${jwt}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAiImages(data);
+        }
+      };
+      fetchImages();
+    }
+  }, [activeTab, user]);
+
 
   if (isLoading) {
   return <div className="min-h-screen flex items-center justify-center">로딩 중…</div>;
@@ -425,6 +447,22 @@ const MyPage = ({ setIsLoggedIn }) => {
                             </button>
                           </div>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI 캐릭터 Tab */}
+              {activeTab === 'ai' && (
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">내 AI 캐릭터</h2>
+                  <div className="flex gap-6 flex-wrap">
+                    {aiImages.length === 0 && <div className="text-gray-500">저장된 AI 캐릭터 이미지가 없습니다.</div>}
+                    {aiImages.map(img => (
+                      <div key={img.id} className="flex flex-col items-center">
+                        <img src={img.imageUrl} alt="AI 캐릭터" className="w-32 h-32 object-cover rounded-xl shadow" />
+                        <span className="text-xs text-gray-500 mt-2">{new Date(img.createdAt).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

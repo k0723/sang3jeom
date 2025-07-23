@@ -129,8 +129,12 @@ function drawCylindricalImage(ctx, img, x, y, w, h, curve = 20) {
   ctx.filter = "none";
 }
 
-
-
+// uploadedImg가 File/Blob이면 URL.createObjectURL, string이면 그대로 사용
+const getImageSrc = (img) => {
+  if (!img) return null;
+  if (typeof img === "string") return img;
+  return URL.createObjectURL(img);
+};
 
 
 export default function GoodsMaker() {
@@ -150,6 +154,10 @@ export default function GoodsMaker() {
   const [imgLoaded, setImgLoaded] = useState(false);
   const navigate = useNavigate();
   const fileInputRef = useRef();
+  const [aiImages, setAiImages] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const userId = 1; // 하드코딩된 유저 ID
+  const abortControllerRef = useRef(null); // 이미지 로딩 중단용
 
   useEffect(() => {
     AOS.init({
@@ -176,173 +184,233 @@ export default function GoodsMaker() {
     };
   }, [uploadedImg, aiImg, selected]);
 
-  // 굿즈 배경만 그리는 useEffect
   useEffect(() => {
-    if (uploadedImg || aiImg) return; // 합성 이미지가 있으면 기존 로직이 처리
-    if (!selected) return;
+    const fetchImages = async () => {
+      console.log("AI 이미지 불러오기 시작, userId:", userId);
+      
+      const jwt = sessionStorage.getItem("jwt");
+      console.log("JWT 토큰:", jwt ? "존재함" : "없음");
+      
+      try {
+        let token = null;
+        if (jwt) {
+          if (jwt.startsWith("{")) {
+            token = JSON.parse(jwt).token;
+            console.log("JWT 객체에서 토큰 추출됨");
+          } else {
+            token = jwt;
+          }
+        }
+        
+        console.log("API 호출:", `/api/ai-images/user/${userId}`);
+        
+        // 헤더 설정
+        const headers = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch(`/api/ai-images/user/${userId}`, {
+          headers: headers
+        });
+        
+        console.log("API 응답 상태:", res.status);
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log("AI 이미지 데이터:", data);
+          setAiImages(data);
+        } else {
+          console.error("AI 이미지 불러오기 실패:", res.status);
+          const errorText = await res.text();
+          console.error("에러 내용:", errorText);
+        }
+      } catch (error) {
+        console.error("AI 이미지 불러오기 오류:", error);
+      }
+    };
+    fetchImages();
+  }, [userId]);
+
+  // 통합된 캔버스 렌더링 useEffect
+  useEffect(() => {
+    // 진행 중인 이미지 로딩 중단
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    
+    // 캔버스 즉시 비우기
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 배경 이미지 로드
     const bg = new window.Image();
     bg.crossOrigin = "anonymous";
     bg.src = selected.img;
+    
     bg.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 머그컵 배경 이미지를 원본 비율로, width를 캔버스에 맞추고 height를 비율에 맞게(상하 여백만 남게)
+      // AbortController로 중단되었는지 확인
+      if (abortControllerRef.current?.signal.aborted) return;
+      
+      // 배경 그리기 (비율 맞춤)
       const imgRatio = bg.width / bg.height;
       const canvasRatio = canvas.width / canvas.height;
       let bgW, bgH, bgX, bgY;
-
       if (imgRatio > canvasRatio) {
-        // 이미지가 더 가로로 김: 높이에 맞추고 좌우 잘라냄
         bgH = canvas.height;
         bgW = canvas.height * imgRatio;
         bgX = (canvas.width - bgW) / 2;
         bgY = 0;
       } else {
-        // 이미지가 더 세로로 김: 너비에 맞추고 상하 잘라냄
         bgW = canvas.width;
         bgH = canvas.width / imgRatio;
         bgX = 0;
         bgY = (canvas.height - bgH) / 2;
       }
       ctx.drawImage(bg, bgX, bgY, bgW, bgH);
-    };
-  }, [selected, uploadedImg, aiImg]);
-
-  useEffect(() => {
-    if (!imgLoaded) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const bg = bgRef.current;
-    const fg = fgRef.current;
-
-    // 배경 비율 계산
-    const imgRatio = bg.width / bg.height;
-    const canvasRatio = canvas.width / canvas.height;
-    let bgW, bgH, bgX, bgY;
-
-    if (imgRatio > canvasRatio) {
-      // 배경이 더 가로로 김: 높이에 맞추고 좌우 여백
-      bgH = canvas.height;
-      bgW = bg.height * imgRatio;
-      bgW = canvas.height * imgRatio;
-      bgX = (canvas.width - bgW) / 2;
-      bgY = 0;
-    } else {
-      // 배경이 더 세로로 김: 너비에 맞추고 상하 여백
-      bgW = canvas.width;
-      bgH = canvas.width / imgRatio;
-      bgX = 0;
-      bgY = (canvas.height - bgH) / 2;
-    }
-
-    ctx.drawImage(bg, bgX, bgY, bgW, bgH);
-
-    // 굿즈 종류별로 위치/크기 다르게
-    let x, y, w, h;
-    if (selected.key === 'mug') {
-      w = canvas.width * 0.5 * imgScale;
-      h = w;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = canvas.height * 0.35 + imgOffset.y;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.10)"; // 약한 그림자
-      ctx.shadowBlur = 8;
-      ctx.globalAlpha = 0.92; // 약간 투명
-      ctx.globalCompositeOperation = "multiply"; // 컵과 자연스럽게 섞임
-      drawCylindricalImage(ctx, fg, x, y, w, h, );
-      ctx.globalCompositeOperation = "source-over"; // 원래대로 복구
-      ctx.restore();
-    } else if (selected.key === 'tshirt') {
-      w = canvas.width * 0.6 * imgScale;
-      h = w;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = canvas.height * 0.55 + imgOffset.y;
       
-      // 티셔츠에 자연스러운 합성 효과 적용
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.08)";
-      ctx.shadowBlur = 2;
-      ctx.globalAlpha = 0.75;
-      ctx.globalCompositeOperation = "multiply";
-      
-      // 티셔츠는 단순하게 그리되 약간의 곡면 효과만 적용
-      ctx.drawImage(fg, x, y, w, h);
-      
-      // 티셔츠 질감을 위한 추가 레이어
-      ctx.globalAlpha = 0.25;
-      ctx.globalCompositeOperation = "overlay";
-      ctx.drawImage(fg, x, y, w, h);
-      
-      ctx.restore();
-    } else if (selected.key === 'ecobag') {
-      w = canvas.width * 0.6 * imgScale;
-      h = w;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = canvas.height * 0.38 + imgOffset.y;
-      // 에코백에 자연스러운 합성 효과 적용
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.10)';
-      ctx.shadowBlur = 18;
-      ctx.globalAlpha = 0.93;
-      ctx.globalCompositeOperation = 'multiply';
-      // (선택) 곡면 효과를 주고 싶으면 아래 주석 해제
-      // ctx.transform(1, 0.04, 0, 1, 0, 0);
-      ctx.drawImage(fg, x, y, w, h);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.restore();
-    } else if (selected.key === 'case') {
-      w = canvas.width * 0.25 * imgScale;
-      h = w * 2;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = (canvas.height - h) / 2 + imgOffset.y;
-      // AI 이미지 비율 유지
-      const imgRatio = fg.width / fg.height;
-      const printRatio = w / h;
-      let drawW = w, drawH = h;
-      if (imgRatio > printRatio) {
-        drawW = w;
-        drawH = w / imgRatio;
-      } else {
-        drawH = h;
-        drawW = h * imgRatio;
+      // uploadedImg가 있으면 합성 이미지도 그리기
+      if (uploadedImg) {
+        const fg = new window.Image();
+        fg.crossOrigin = "anonymous";
+        fg.src = uploadedImg;
+        
+        fg.onload = () => {
+          // AbortController로 중단되었는지 확인
+          if (abortControllerRef.current?.signal.aborted) return;
+          
+          // 굿즈별 합성 효과
+          if (selected.key === "mug") {
+            drawCylindricalImage(
+              ctx,
+              fg,
+              canvas.width * 0.28 + imgOffset.x,
+              canvas.height * 0.22 + imgOffset.y,
+              canvas.width * 0.44 * imgScale,
+              canvas.height * 0.56 * imgScale,
+              20
+            );
+          } else if (selected.key === "tshirt") {
+            ctx.save();
+            ctx.globalAlpha = 0.92;
+            ctx.globalCompositeOperation = "multiply";
+            ctx.shadowColor = "rgba(0,0,0,0.10)";
+            ctx.shadowBlur = 8;
+            const fgW = canvas.width * 0.38 * imgScale;
+            const fgH = canvas.height * 0.38 * imgScale;
+            const fgX = canvas.width * 0.31 + imgOffset.x;
+            const fgY = canvas.height * 0.22 + imgOffset.y;
+            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+            ctx.restore();
+          } else if (selected.key === "ecobag") {
+            ctx.save();
+            ctx.globalAlpha = 0.95;
+            ctx.globalCompositeOperation = "multiply";
+            ctx.shadowColor = "rgba(0,0,0,0.08)";
+            ctx.shadowBlur = 6;
+            const fgW = canvas.width * 0.32 * imgScale;
+            const fgH = canvas.height * 0.38 * imgScale;
+            const fgX = canvas.width * 0.34 + imgOffset.x;
+            const fgY = canvas.height * 0.28 + imgOffset.y;
+            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+            ctx.restore();
+          } else if (selected.key === "case") {
+            ctx.save();
+            ctx.globalAlpha = 0.98;
+            ctx.globalCompositeOperation = "multiply";
+            ctx.shadowColor = "rgba(0,0,0,0.10)";
+            ctx.shadowBlur = 4;
+            const printX = canvas.width * 0.41 + imgOffset.x;
+            const printY = canvas.height * 0.13 + imgOffset.y;
+            const printW = canvas.width * 0.18 * imgScale;
+            const printH = canvas.height * 0.74 * imgScale;
+            const ratio = fg.width / fg.height;
+            let drawW = printW, drawH = printH;
+            if (drawW / drawH > ratio) {
+              drawW = drawH * ratio;
+            } else {
+              drawH = drawW / ratio;
+            }
+            const drawX = printX + (printW - drawW) / 2;
+            const drawY = printY + (printH - drawH) / 2;
+            ctx.drawImage(fg, drawX, drawY, drawW, drawH);
+            ctx.restore();
+          } else {
+            const fgW = fg.width * imgScale * 0.5;
+            const fgH = fg.height * imgScale * 0.5;
+            const fgX = (canvas.width - fgW) / 2 + imgOffset.x;
+            const fgY = (canvas.height - fgH) / 2 + imgOffset.y;
+            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+          }
+        };
       }
-      const drawX = x + (w - drawW) / 2;
-      const drawY = y + (h - drawH) / 2;
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.13)';
-      ctx.shadowBlur = 10;
-      ctx.globalAlpha = 0.96;
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(fg, drawX, drawY, drawW, drawH);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.restore();
-    } else {
-      // 기타 굿즈별 위치/크기 (필요시 추가)
-      w = canvas.width * 0.5 * imgScale;
-      h = w;
-      x = (canvas.width - w) / 2 + imgOffset.x;
-      y = (canvas.height - h) / 2 + imgOffset.y;
-      ctx.drawImage(fg, x, y, w, h);
-    }
-  }, [imgLoaded, imgScale, imgOffset, selected]);
+    };
+  }, [uploadedImg, selected, imgScale, imgOffset]);
 
   useEffect(() => {
     // 굿즈 종류나 업로드 이미지가 바뀔 때마다 위치/크기 초기화
+    
+    // 진행 중인 이미지 로딩 중단
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
     setImgOffset({ x: 0, y: 0 });
     setImgScale(1);
     setUploadedImg(null); // 굿즈 바꿀 때 업로드 이미지도 초기화
+    
+    // 캔버스 즉시 비우기 및 새로운 굿즈 배경 그리기
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      // 캔버스 완전히 비우기
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 새로운 굿즈 배경 즉시 그리기
+      const bg = new window.Image();
+      bg.crossOrigin = "anonymous";
+      bg.src = selected.img;
+      bg.onload = () => {
+        // AbortController로 중단되었는지 확인
+        if (abortControllerRef.current?.signal.aborted) return;
+        
+        const imgRatio = bg.width / bg.height;
+        const canvasRatio = canvas.width / canvas.height;
+        let bgW, bgH, bgX, bgY;
+        if (imgRatio > canvasRatio) {
+          bgH = canvas.height;
+          bgW = canvas.height * imgRatio;
+          bgX = (canvas.width - bgW) / 2;
+          bgY = 0;
+        } else {
+          bgW = canvas.width;
+          bgH = canvas.width / imgRatio;
+          bgX = 0;
+          bgY = (canvas.height - bgH) / 2;
+        }
+        ctx.drawImage(bg, bgX, bgY, bgW, bgH);
+      };
+    }
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }, [selected.key]);
 
+  // 파일 첨부
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setUploadedImg(URL.createObjectURL(file));
-    }
+    if (file) setUploadedImg(URL.createObjectURL(file));
+  };
+
+  // AI 캐릭터 선택
+  const handleSelectAiImage = (url) => {
+    setUploadedImg(url);
   };
 
   const handleCanvasMouseDown = (e) => {
@@ -556,6 +624,7 @@ export default function GoodsMaker() {
                 </div>
                 <canvas
                   ref={canvasRef}
+                  key={selected.key} // 굿즈 변경 시 캔버스 완전히 새로 생성
                   width={800}
                   height={450}
                   className="rounded-xl"
@@ -573,15 +642,45 @@ export default function GoodsMaker() {
 
             {/* AI Image Upload */}
             <div className="mb-6 flex flex-col items-center">
-              <label className="block mb-2 text-gray-700 font-semibold">AI 캐릭터 이미지 업로드 (테스트용)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                ref={fileInputRef}
-              />
-              <p className="text-xs text-gray-400 mt-1">AI 캐릭터 이미지를 업로드하면 굿즈에 합성됩니다.</p>
+              <h3 className="font-semibold mb-2">내 AI 캐릭터 선택</h3>
+              {aiImages.length > 0 ? (
+                <div className="flex gap-4">
+                  {aiImages.map(img => (
+                    <img
+                      key={img.id}
+                      src={img.imageUrl}
+                      alt="AI 캐릭터"
+                      className={`w-24 h-24 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 ${
+                        uploadedImg === img.imageUrl ? 'border-blue-500 shadow-lg' : 'border-transparent hover:border-gray-300'
+                      }`}
+                      onClick={() => handleSelectAiImage(img.imageUrl)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 px-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-dashed border-blue-200 max-w-md">
+                  <div className="mb-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">AI 캐릭터가 없어요!</h4>
+                    <p className="text-gray-600 text-sm mb-4">
+                      나만의 특별한 AI 캐릭터를 만들어보세요
+                    </p>
+                  </div>
+                  <Link
+                    to="/character-maker"
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    AI 캐릭터 만들기
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Product Details */}
