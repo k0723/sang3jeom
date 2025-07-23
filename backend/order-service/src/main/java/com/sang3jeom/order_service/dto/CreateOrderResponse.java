@@ -16,4 +16,5 @@ public class CreateOrderResponse {
     private int quantity;
     private String userName;
     private long price;
+    private String memo;
 }

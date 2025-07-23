@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Cookies from 'js-cookie';
 
 export default function PaySuccess() {
   const location = useLocation();
@@ -30,6 +31,11 @@ export default function PaySuccess() {
     const price = sessionStorage.getItem("amount");
     const userName = sessionStorage.getItem("receiver") || "홍길동";
 
+    const address1 = sessionStorage.getItem("address");
+    const address2 = sessionStorage.getItem("address2") || "";
+    const addressValue = (address1 ? address1 : "") + (address2 ? " " + address2 : "");
+    const quantityValue = quantity ? Number(quantity) : 1;
+
     if (pg_token && tid && partner_order_id && partner_user_id) {
       fetch("http://localhost:8082/pay/approve", {
         method: "POST",
@@ -43,40 +49,42 @@ export default function PaySuccess() {
       })
         .then(res => res.json())
         .then(data => {
+          const token = localStorage.getItem("accessToken");
           fetch("http://localhost:8082/orders/direct", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({
               goodsId: Number(goodsId),
-              quantity: Number(quantity),
-              userId: Number(userId),
-              address: address,
+              quantity: quantityValue,
+              address: addressValue,
               memo: memo,
-              price: price ? Number(price) : 1, // 가격 정보 추가
-              userName: userName    // 주문자 이름 추가
+              price: price ? Number(price) : 1
             })
           })
             .then(res => res.json())
             .then(orderData => {
-              navigate("/order-complete", {
-                state: {
-                  orderId: orderData.orderId || partner_order_id,
-                  receiver,
-                  phone,
-                  address,
-                  email,
-                  amount: amount ? Number(amount) : 0
-                }
-              });
+                navigate("/order-complete", {
+                  state: {
+                    orderId: orderData.orderId || partner_order_id,
+                    receiver,
+                    phone,
+                  address: addressValue, // 합쳐진 주소 전달
+                    email,
+                    amount: amount ? Number(amount) : 0
+                  }
+                });
             })
             .catch(() => {
-              setStatus("error");
-              setMessage("주문 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.");
+                setStatus("error");
+                setMessage("주문 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.");
             });
         })
         .catch(() => {
-          setStatus("error");
-          setMessage("결제 승인 중 오류가 발생했습니다. 다시 시도해주세요.");
+            setStatus("error");
+            setMessage("결제 승인 중 오류가 발생했습니다. 다시 시도해주세요.");
         });
     } else {
       setStatus("error");
