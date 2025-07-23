@@ -89,20 +89,20 @@ public class AuthController {
 
         ResponseCookie accessCookie = ResponseCookie.from("accessToken",  accessToken)
         .httpOnly(true)                      // JS 접근 차단 :contentReference[oaicite:0]{index=0}
-        .secure(true)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
+        .secure(false)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
         .path("/")                           // 도메인 전체에 적용
         .maxAge(Duration.ofSeconds(accessTtlSec))
-        .sameSite("Strict")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
+        .sameSite("Lax")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
         .build();
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
     // 3) HttpOnly + Secure + SameSite 쿠키로 Refresh Token 전달
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
         .httpOnly(true)
-        .secure(true)
+        .secure(false)
         .path("/")              // 리프레시 전용 엔드포인트로 범위 제한 :contentReference[oaicite:3]{index=3}
         .maxAge(Duration.ofSeconds(refreshTtlSec))
-        .sameSite("Strict")
+        .sameSite("Lax")
         .build();
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
@@ -138,7 +138,7 @@ public class AuthController {
         return ResponseEntity.ok(new JwtResponseDTO(token, expiresIn));
     }
 
-     @PostMapping("/refresh")
+    @PostMapping("/refresh")
     public JwtResponseDTO refresh(@RequestBody Map<String,String> body) {
         String refreshToken = body.get("refreshToken");
         if (refreshToken == null) {
