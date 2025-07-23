@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
@@ -117,12 +117,14 @@ const OrderPage = () => {
 
   const handleKakaoPay = async () => {
     // 배송지/메모/이메일/수령인/연락처/금액 sessionStorage 저장
-    sessionStorage.setItem("address", address1);
+    sessionStorage.setItem("address", address1 || userInfo.address);
+    sessionStorage.setItem("address2", address2); // 상세주소 저장
     sessionStorage.setItem("memo", memo);
     sessionStorage.setItem("email", email);
     sessionStorage.setItem("receiver", receiver);
     sessionStorage.setItem("phone", phone);
-    sessionStorage.setItem("amount", product.price.toString()); // 총금액만 저장
+    sessionStorage.setItem("amount", product.price.toString());
+    sessionStorage.setItem("quantity", product.quantity.toString()); // 수량 저장
     const requestBody = {
       partnerOrderId: `ORDER_${Date.now()}`,
       partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체
@@ -196,6 +198,37 @@ const OrderPage = () => {
       }
     }).open();
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    fetch("http://localhost:8080/users/me", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+      .then(res => {
+        console.log("[OrderPage] /me API status:", res.status);
+        return res.json();
+      })
+      .then(user => {
+        console.log("[OrderPage] /me API user result:", user);
+        setUserInfo(prev => ({
+          ...prev,
+          name: user.name || prev.name,
+          phone: user.phone || prev.phone,
+          address: user.address || prev.address
+        }));
+        if (user.email) setEmail(user.email); // 이메일도 업데이트
+        setReceiver(user.name || "");
+        setPhone(user.phone || "");
+        setAddress1(user.address || "");
+      })
+      .catch((err) => {
+        console.error("[OrderPage] /me API error:", err);
+        // 에러시 기존 기본값 유지
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -343,8 +376,8 @@ const OrderPage = () => {
             <input
               className="w-full border rounded p-2 mb-3"
               placeholder="휴대폰 번호"
-              value={formatPhoneNumber(tempPhone)}
-              onChange={handlePhoneChange}
+              value={tempPhone}
+              onChange={e => setTempPhone(formatPhoneNumber(e.target.value))}
               onKeyDown={handlePhoneKeyDown}
               maxLength={13}
             />

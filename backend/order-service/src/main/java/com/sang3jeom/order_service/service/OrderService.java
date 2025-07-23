@@ -1,9 +1,11 @@
 package com.sang3jeom.order_service.service;
 
+import com.sang3jeom.order_service.config.UserServiceClient;
 import com.sang3jeom.order_service.dto.CreateOrderRequest;
 import com.sang3jeom.order_service.dto.CreateOrderResponse;
 import com.sang3jeom.order_service.dto.DirectOrderRequest;
 import com.sang3jeom.order_service.domain.Order;
+import com.sang3jeom.order_service.dto.UserInfoDTO;
 import com.sang3jeom.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
+    private final UserServiceClient userServiceClient;
 //
 /*
 
@@ -66,13 +69,19 @@ public class OrderService {
 
 
     @Transactional
-    public CreateOrderResponse createDirectOrder(DirectOrderRequest request) {
+    public CreateOrderResponse createDirectOrder(DirectOrderRequest request, String token) {
+        System.out.println("[OrderService] 전달받은 Authorization 헤더: " + token);
+
+        UserInfoDTO userInfo = userServiceClient.getUserInfo(token);
+        System.out.println("userInfo.getUserId(): " + userInfo.getUserId());
+        System.out.println("userInfo.getName(): " + userInfo.getName());
+
         Order order = new Order();
-        order.setUserId(request.getUserId());
+        order.setUserId(userInfo.getUserId());
+        order.setUserName(userInfo.getName());
         order.setStatus("PENDING");
         order.setAddress(request.getAddress());
         order.setMemo(request.getMemo());
-        order.setUserName(request.getUserName());
         order.setPrice(request.getPrice());
         order.setQuantity(request.getQuantity());
         orderRepository.save(order);
@@ -84,6 +93,6 @@ public class OrderService {
 //        item.setQuantity(request.getQuantity());
 //        orderItemRepository.save(item);
 
-        return new CreateOrderResponse(order.getId(), order.getStatus(), order.getOrderDate(), order.getQuantity(), order.getUserName(), order.getPrice());
+        return new CreateOrderResponse(order.getId(), order.getStatus(), order.getOrderDate(), order.getQuantity(), order.getUserName(), order.getPrice(), order.getMemo());
     }
 }
