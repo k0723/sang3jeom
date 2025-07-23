@@ -156,15 +156,14 @@ export default function CharacterMaker({ onDone }) {
   };
 
   const handleSaveImage = async () => {
+    // 임시로 userId를 1로 고정
+    const userId = 1;
     let jwt = sessionStorage.getItem("jwt");
     try {
-      // 혹시 객체가 저장되어 있다면 파싱
       if (jwt && jwt.startsWith("{")) {
         jwt = JSON.parse(jwt).token;
       }
     } catch (e) {}
-    const payload = parseJwt(jwt);
-    const userId = payload && payload.id;
     if (!userId) {
       alert("유저 정보를 확인할 수 없습니다.");
       return;
@@ -173,13 +172,19 @@ export default function CharacterMaker({ onDone }) {
       alert("저장할 이미지가 없습니다.");
       return;
     }
+    // result.result_url이 URL일 경우, Blob으로 변환
+    const response = await fetch(result.result_url);
+    const blob = await response.blob();
+    const file = new File([blob], "ai_character.png", { type: blob.type });
+    const formData = new FormData();
+    formData.append("userId", userId);
+    formData.append("file", file);
     const res = await fetch("/api/ai-images", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${jwt}`
       },
-      body: JSON.stringify({ userId, imageUrl: result.result_url })
+      body: formData
     });
     if (res.ok) {
       alert("이미지 저장 성공!");

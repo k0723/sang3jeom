@@ -10,7 +10,7 @@ spring:
 
   datasource:
     # 환경변수 DATASOURCE_URL이 없으면 기본 URL 사용
-    url:       ${DATASOURCE_URL:jdbc:mysql://localhost:3306/fastapidb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true}
+    url:       ${DATASOURCE_URL:jdbc:mysql://localhost:3306/sang3jeomtestdb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true}
     # 환경변수 DATASOURCE_USERNAME/PASSWORD이 없으면 root/1234 사용
     username:  ${DATASOURCE_USERNAME:root}
     password:  ${DATASOURCE_PASSWORD:1234}
@@ -63,3 +63,14 @@ grpc:
     security:
       enabled: false
     
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${S3_REGION}
+    s3:
+      bucket: ${S3_BUCKET}
+
