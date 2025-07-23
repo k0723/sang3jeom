@@ -72,7 +72,7 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+            Jwts.parser().setSigningKey(getSigningKey()).parseClaimsJws(token);
             return true;
         } catch (JwtException|IllegalArgumentException ex) {
             return false;
@@ -80,7 +80,7 @@ public class JwtTokenProvider {
     }
 
     public Authentication getAuthentication(String token) {
-        Claims claims = Jwts.parser().setSigningKey(secret)
+        Claims claims = Jwts.parser().setSigningKey(getSigningKey())
                           .parseClaimsJws(token)
                           .getBody();
         String username = claims.getSubject();

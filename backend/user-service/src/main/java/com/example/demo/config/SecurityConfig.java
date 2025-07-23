@@ -30,7 +30,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.Cookie; 
 import org.springframework.security.web.authentication.logout.LogoutFilter;
-
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 
 import java.util.List;
 
@@ -60,6 +62,23 @@ public class SecurityConfig {
         new SimpleUrlAuthenticationFailureHandler()
     );
 
+    AuthenticationEntryPoint restAuthEntryPoint = (request, response, authException) -> {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("""
+            {"error":"UNAUTHORIZED","message":"%s"}
+            """.formatted(authException.getMessage()));
+    };
+
+    // 2) 권한 거부 시 403 JSON 반환 (옵션)
+    AccessDeniedHandler restAccessDeniedHandler = (request, response, accessDeniedException) -> {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("""
+            {"error":"FORBIDDEN","message":"%s"}
+            """.formatted(accessDeniedException.getMessage()));
+    };
+
     http
       // "/logout" 포함해서 API 전체(예: "/users/**")와 logout을 매칭
       .securityMatcher("/users/**", "/logout")
@@ -67,12 +86,12 @@ public class SecurityConfig {
       .csrf(csrf -> csrf.disable())
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .exceptionHandling(ex -> ex
-        .authenticationEntryPoint(
-          new LoginUrlAuthenticationEntryPoint("/oauth2/authorization/google")
-        )
+          .authenticationEntryPoint(restAuthEntryPoint)    // ← 변경
+          .accessDeniedHandler(restAccessDeniedHandler)       // ← 옵션
       )
       .authorizeHttpRequests(auth -> auth
         // 열어둘 경로
+        .requestMatchers("/admin/**").hasRole("ADMIN")
         .requestMatchers(
           "/signup",
           "/login",
@@ -87,7 +106,7 @@ public class SecurityConfig {
       // JWT 로그인/토큰 필터
       .addFilterBefore(jwtLoginFilter,
                        UsernamePasswordAuthenticationFilter.class)
-      .addFilterBefore(new JwtTokenFilter(jwtProvider), 
+      .addFilterBefore(new JwtTokenFilter(jwtProvider, redis), 
                        LogoutFilter.class)
       .logout(logout -> logout
       .logoutUrl("/logout")
