@@ -1,47 +1,25 @@
-# Gradle 캐시 및 빌드 산출물 무시
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Java
+target/
+*.jar
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradle
 .gradle/
 build/
-**/build/
-**/.gradle/
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-<<<<<<< HEAD
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-# .gitignore
-.env
-=======
-# mypy, coverage 등
-.mypy_cache/
-coverage/
-*.cover
-*.py,cover
-.hypothesis/
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
-.env
->>>>>>> 4010aa4 (Remove .env from Git history and update .gitignore)
