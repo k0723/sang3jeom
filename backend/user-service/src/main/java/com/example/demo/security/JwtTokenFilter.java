@@ -33,14 +33,6 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        // 로그인·회원가입 API는 JWT 검사 필터를 건너뜀
-        return path.startsWith("/api/auth/login")
-            || path.startsWith("/api/auth/register");
-    }
-
-    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)

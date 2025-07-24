@@ -10,6 +10,7 @@ import com.example.demo.service.UserService;
 import com.example.demo.util.JwtTokenProvider;
 import com.example.demo.domain.UserEntity;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.TokenService;
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
@@ -58,6 +59,7 @@ public class AuthController {
     private final JwtTokenProvider jwtProvider;
     private final UserRepository userRepo;
     private final RedisTemplate<String,String> redis;
+    private final TokenService tokenService;
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호로 신규 사용자 등록")
     @PostMapping("/signup")
@@ -75,38 +77,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<JwtResponseDTO> login(
             @RequestBody @Valid LoginRequestDTO req,
-            HttpServletResponse response
+            HttpServletResponse res
     ) {
-        UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword());
-         Authentication authentication = authenticationManager.authenticate(authToken);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        JwtResponseDTO tokens = authService.loginAndGetToken(req);
-        String accessToken  = tokens.getAccessToken();
-        String refreshToken = tokens.getRefreshToken();
-        long accessTtlSec   = tokens.getAccessExpiresIn()  / 1000;
-        long refreshTtlSec  = tokens.getRefreshExpiresIn() / 1000;
+        UserEntity user = authService.login(req);
+        String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
 
-        ResponseCookie accessCookie = ResponseCookie.from("accessToken",  accessToken)
-        .httpOnly(true)                      // JS 접근 차단 :contentReference[oaicite:0]{index=0}
-        .secure(false)                        // HTTPS 전용 전송 :contentReference[oaicite:1]{index=1}
-        .path("/")                           // 도메인 전체에 적용
-        .maxAge(Duration.ofSeconds(accessTtlSec))
-        .sameSite("Lax")                  // CSRF 방어 강화 :contentReference[oaicite:2]{index=2}
-        .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
-
-    // 3) HttpOnly + Secure + SameSite 쿠키로 Refresh Token 전달
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
-        .httpOnly(true)
-        .secure(false)
-        .path("/")              // 리프레시 전용 엔드포인트로 범위 제한 :contentReference[oaicite:3]{index=3}
-        .maxAge(Duration.ofSeconds(refreshTtlSec))
-        .sameSite("Lax")
-        .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
-        return ResponseEntity.ok().body(tokens);
+        JwtResponseDTO dto = tokenService.issueTokens(user.getId(), role);
+        tokenService.writeTokensAsCookies(dto, res);
+        return ResponseEntity.ok(dto);
     }
 
     @Operation(summary = "OAuth2 인가 시작", description = "소셜 로그인(provider) 인가 URL로 리다이렉트")
@@ -128,14 +106,17 @@ public class AuthController {
     @GetMapping("/callback/{provider}")
     public ResponseEntity<JwtResponseDTO> callback(
             @PathVariable String provider,
-            Authentication authentication
+            Authentication authentication,
+            HttpServletResponse res
     ) {
         // UserDetails 객체를 다루는 AuthService 로직에 맞춰 cast/처리
         OAuth2User oauth2 = (OAuth2User) authentication.getPrincipal();
-        authService.processOAuthPostLogin(oauth2);
-        String token = jwtProvider.generateToken(authentication);
-        long expiresIn = jwtProvider.getAccessExpiryMs();
-        return ResponseEntity.ok(new JwtResponseDTO(token, expiresIn));
+        UserEntity user = authService.processOAuthPostLogin(oauth2);
+
+        String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
+        JwtResponseDTO dto = tokenService.issueTokens(user.getId(), role);
+        tokenService.writeTokensAsCookies(dto, res);
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping("/refresh")
@@ -160,8 +141,11 @@ public class AuthController {
 
         // 액세스 토큰만 재발급
         String email   = claims.getBody().getSubject();
-        boolean isAdmin = false; // 필요시 DB 조회
-        String newAccess = jwtProvider.createAccessToken(email, isAdmin, Long.valueOf(userId));
+        Long uid = Long.valueOf(userId);
+        boolean isAdmin = /* DB 조회 or 파라미터 */ false;
+        String role = isAdmin ? "ROLE_ADMIN" : "ROLE_USER";
+        JwtResponseDTO dto = tokenService.issueTokens(uid, role);
+        String newAccess = dto.getAccessToken();
 
         return JwtResponseDTO.builder()
             .accessToken(newAccess)
