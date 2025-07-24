@@ -48,7 +48,7 @@ spring:
             redirect-uri:  http://localhost:8080/oauth2/redirection/{registrationId}
 
 jwt:
-  secret:        ${JWT_SECRET}
+  secret: ${JWT_SECRET}
   access-expiry-ms: 900000       # 15분
   refresh-expiry-ms: 1209600000  # 14일
 
