@@ -1,136 +1,123 @@
 package com.example.demo.util;
 
-import com.example.demo.util.JwtTokenProvider;
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Component;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.http.HttpHeaders;
-import org.springframework.util.StringUtils; 
-import io.jsonwebtoken.Claims;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import lombok.Getter;
-
-import java.util.List;
-import java.util.Date;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.Cookie;
-import java.util.Base64;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret}")
-    private String secret;
-    @Value("${jwt.expiration-ms}")
-    private long expiryMs;
+    @Getter
+    private final long accessExpiryMs;
+    @Getter
+    private final long refreshExpiryMs;
+    private final Key signingKey;
 
-    private final UserDetailsService userDetailsService;
-
-    public JwtTokenProvider(UserDetailsService uds,
-                            @Value("${jwt.secret}") String secret,
-                            @Value("${jwt.expiration-ms}") long expiryMs
-    ) 
-    {
-        this.secret = secret;
-        this.expiryMs = expiryMs;
-        this.userDetailsService = uds;
-
-        System.out.printf("Injected secret=[%s], expiry=%d%n", secret, expiryMs);
+    public JwtTokenProvider(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.access-expiry-ms}") long accessExpiryMs,
+            @Value("${jwt.refresh-expiry-ms}") long refreshExpiryMs
+    ) {
+        this.signingKey     = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secret));
+        this.accessExpiryMs = accessExpiryMs;
+        this.refreshExpiryMs= refreshExpiryMs;
     }
 
-    public long getAccessExpiryMs() {
-        return expiryMs;
+    /* ===================== Create ===================== */
+
+    public String createAccessToken(Long userId, String role) {
+        return buildToken(userId, role, accessExpiryMs);
     }
 
-    public long getRefreshExpiryMs() {
-        return expiryMs;
+    public String createRefreshToken(Long userId, String role) {
+        return buildToken(userId, role, refreshExpiryMs);
     }
 
-    public String generateToken(Authentication auth) {
-        String username = auth.getName();
-        Date now = new Date();
-        Date exp = new Date(now.getTime() + expiryMs);
+    private String buildToken(Long userId, String role, long ttlMs) {
+        Date now    = new Date();
+        Date expiry = new Date(now.getTime() + ttlMs);
+        String jti  = UUID.randomUUID().toString();
+
         return Jwts.builder()
-                   .setSubject(username)
-                   .setIssuedAt(now)
-                   .setExpiration(exp)
-                   .signWith(getSigningKey(),SignatureAlgorithm.HS512)
-                   .compact();
+                .setSubject(String.valueOf(userId))  // sub = userId
+                .setId(jti)
+                .claim("uid",  userId)
+                .claim("role", role)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
+                .signWith(signingKey, SignatureAlgorithm.HS512)
+                .compact();
     }
+
+    /* ===================== Parse / Validate ===================== */
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(getSigningKey()).parseClaimsJws(token);
+            parseToken(token);
             return true;
-        } catch (JwtException|IllegalArgumentException ex) {
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
+    public Jws<Claims> parseToken(String token) {
+        return Jwts.parserBuilder()
+                   .setSigningKey(signingKey)
+                   .build()
+                   .parseClaimsJws(token);
+    }
+
+    public Long getUserId(String token) {
+        return parseToken(token).getBody().get("uid", Long.class);
+    }
+
+    public String getRole(String token) {
+        return parseToken(token).getBody().get("role", String.class);
+    }
+
+    public String getJti(String token) {
+        return parseToken(token).getBody().getId();
+    }
+
+    public long getRemainMillis(String token) {
+        Date exp = parseToken(token).getBody().getExpiration();
+        return exp.getTime() - System.currentTimeMillis();
+    }
+
+    /* ===================== Auth object ===================== */
     public Authentication getAuthentication(String token) {
-        Claims claims = Jwts.parser().setSigningKey(getSigningKey())
-                          .parseClaimsJws(token)
-                          .getBody();
-        String username = claims.getSubject();
-        Boolean isAdmin = claims.get("roles",Boolean.class);
-        Long userId = claims.get("id",Long.class);
-        List<SimpleGrantedAuthority> authorities = List.of(
-            new SimpleGrantedAuthority(isAdmin ? "ROLE_ADMIN" : "ROLE_USER")
-        );
+        Claims claims = parseToken(token).getBody();
+        Long   uid    = claims.get("uid", Long.class);
+        String role   = claims.get("role", String.class);
 
-        // 3) UserDetails 없이, 빈 비밀번호("")로 User 객체 생성
-        User principal = new User(username, "", authorities);
+        List<SimpleGrantedAuthority> auths =
+                List.of(new SimpleGrantedAuthority(role));
 
-        // 4) UsernamePasswordAuthenticationToken 반환
+        User principal = new User(String.valueOf(uid), "", auths);
         UsernamePasswordAuthenticationToken auth =
-        new UsernamePasswordAuthenticationToken(principal, token, authorities);
-        auth.setDetails(userId);  // 여기서 .getDetails()로 id를 꺼낼 수 있어요
-
+                new UsernamePasswordAuthenticationToken(principal, token, auths);
+        auth.setDetails(uid);
         return auth;
     }
-    public String createAccessToken(String username, boolean roles, Long id) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiryMs);
-        String jti  = UUID.randomUUID().toString();
 
-        return Jwts.builder() 
-                   .setSubject(username)
-                   .setId(jti)  
-                   .claim("roles", roles)
-                   .claim("id", id)
-                   .setIssuedAt(now)
-                   .setExpiration(expiry)
-                   .signWith(getSigningKey(),SignatureAlgorithm.HS512)
-                   .compact();
-    }
-
-    public String createRefreshToken(String username, Long id) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiryMs);
-        String jti  = UUID.randomUUID().toString();
-        return Jwts.builder() 
-                   .setSubject(username)
-                   .setId(jti)  
-                   .claim("id", id)
-                   .setIssuedAt(now)
-                   .setExpiration(expiry)
-                   .signWith(getSigningKey(),SignatureAlgorithm.HS512)
-                   .compact();
-    }
-
+    /* ===================== Resolve from Request ===================== */
     public String resolveToken(HttpServletRequest request) {
+        // Cookie 우선
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if ("accessToken".equals(cookie.getName())) {
@@ -138,23 +125,11 @@ public class JwtTokenProvider {
                 }
             }
         }
-        // 2) Authorization 헤더에서 Bearer 토큰 추출
+        // Authorization: Bearer ~
         String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
             return bearer.substring(7);
         }
         return null;
-    }
-
-    public Jws<Claims> parseToken(String token) throws JwtException {
-        return Jwts.parserBuilder()
-                   .setSigningKey(getSigningKey())
-                   .build()
-                   .parseClaimsJws(token);
-    }
-
-    private Key getSigningKey() {
-        byte[] decodedKey = Base64.getDecoder().decode(secret);
-        return Keys.hmacShaKeyFor(decodedKey);
     }
 }
