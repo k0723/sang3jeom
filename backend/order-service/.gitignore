@@ -1,11 +1,13 @@
-HELP.md
-.gradle
+# build & gradle
+.gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### STS ###
+# Java 빌드 출력물
+bin/
+out/
+
+# STS
 .apt_generated
 .classpath
 .factorypath
@@ -13,27 +15,27 @@ build/
 .settings
 .springBeans
 .sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ
+.idea/
 *.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
+# VS Code
 .vscode/
 
+# 환경변수 파일
+src/main/resources/.env
 .env
+
+# node.js
+node_modules/
+dist/
