@@ -4,6 +4,7 @@ import com.example.review.dto.ReviewRequestDTO;
 import com.example.review.dto.ReviewResponseDTO;
 import com.example.review.service.ReviewService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -11,10 +12,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/reviews")
+@Slf4j
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class ReviewController {
@@ -31,7 +31,10 @@ public class ReviewController {
     public ResponseEntity<Void> createReview(
             @RequestHeader("X-User-ID") Long userId,
             @RequestBody ReviewRequestDTO requestDTO) {
+        log.info("createReview Start!!");
+        log.info("userId requestDTO = {} {}", userId,requestDTO);
         reviewService.createReview(userId, requestDTO);
+        log.info("createReview End!!");
         return ResponseEntity.ok().build();
     }
 
@@ -45,6 +48,7 @@ public class ReviewController {
             // sort: 정렬 기준 (createdAt), direction: 정렬 방향 (내림차순)
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
+        log.info("getReviews Start!!");
         return ResponseEntity.ok(reviewService.findReviewsByPage(pageable));
     }
 
@@ -71,6 +75,8 @@ public class ReviewController {
             @RequestHeader("X-User-ID") Long userId,
             @PathVariable Long reviewId,
             @RequestBody ReviewRequestDTO requestDTO) {
+        log.info("updateReview Start!!");
+        log.info("userId reviewId requestDTO = {} {} {}", userId, reviewId, requestDTO);
         reviewService.updateReview(userId, reviewId, requestDTO);
         return ResponseEntity.ok().build();
     }
@@ -85,6 +91,8 @@ public class ReviewController {
     public ResponseEntity<Void> deleteReview(
             @RequestHeader("X-User-ID") Long userId,
             @PathVariable Long reviewId) {
+        log.info("deleteReview Start!!");
+        log.info("userId reviewId = {} {}", userId, reviewId);
         reviewService.deleteReview(userId, reviewId);
         return ResponseEntity.ok().build();
     }
