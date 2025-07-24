@@ -21,6 +21,23 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
+// JWT에서 userId 추출 함수 추가
+function parseJwt(token) {
+  try {
+    const base64Payload = token.split('.')[1];
+    const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decodeURIComponent(
+      jsonPayload
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    ));
+  } catch (e) {
+    console.error('Invalid JWT:', e);
+    return null;
+  }
+}
+
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
       const [preview, setPreview] = useState(null);
@@ -138,6 +155,40 @@ export default function CharacterMaker({ onDone }) {
     }
   };
 
+  const handleSaveImage = async () => {
+    let jwt = sessionStorage.getItem("jwt");
+    try {
+      // 혹시 객체가 저장되어 있다면 파싱
+      if (jwt && jwt.startsWith("{")) {
+        jwt = JSON.parse(jwt).token;
+      }
+    } catch (e) {}
+    const payload = parseJwt(jwt);
+    const userId = payload && payload.id;
+    if (!userId) {
+      alert("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    if (!result || !result.result_url) {
+      alert("저장할 이미지가 없습니다.");
+      return;
+    }
+    const res = await fetch("/api/ai-images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt}`
+      },
+      body: JSON.stringify({ userId, imageUrl: result.result_url })
+    });
+    if (res.ok) {
+      alert("이미지 저장 성공!");
+    } else {
+      const err = await res.json();
+      alert(err.message || "저장 실패");
+    }
+  };
+
   const handleGoToGoodsMaker = () => {
     if (result && result.result_url) {
       navigate(`/goods-maker?img=${encodeURIComponent(result.result_url)}`);
@@ -154,7 +205,6 @@ export default function CharacterMaker({ onDone }) {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
-      <Navbar />
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -210,7 +260,16 @@ export default function CharacterMaker({ onDone }) {
               >
                 {preview ? (
                   <div className="text-center">
-                    <img src={preview} alt="업로드 미리보기" className="w-32 h-32 object-cover rounded-lg shadow mb-4 mx-auto" />
+                    <img
+                      src={preview}
+                      alt="업로드 이미지"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px', // 원하는 최대 높이
+                        objectFit: 'contain', // 비율 유지
+                        borderRadius: 12
+                      }}
+                    />
                     <p className="text-green-600 font-semibold">이미지가 업로드되었습니다!</p>
                   </div>
                 ) : (
@@ -307,11 +366,18 @@ export default function CharacterMaker({ onDone }) {
               >
                 <h2 className="text-xl font-bold text-gray-800 mb-6">생성 결과</h2>
                 <div className="text-center">
-                  <img 
-                    src={result.result_url} 
-                    alt="AI 캐릭터" 
-                    className="mx-auto rounded-xl shadow-lg mb-6 w-64 h-64 object-cover"
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img
+                      src={result.result_url}
+                      alt="생성 결과"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '300px',
+                        objectFit: 'contain',
+                        borderRadius: 16
+                      }}
+                    />
+                  </div>
                   
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <h3 className="font-semibold text-gray-800 mb-2">선택된 옵션</h3>
@@ -334,13 +400,13 @@ export default function CharacterMaker({ onDone }) {
                       다운로드
                     </motion.button>
                     <motion.button
-                      onClick={handleGoToGoodsMaker}
+                      onClick={handleSaveImage}
                       className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <Heart className="w-5 h-5 inline mr-2" />
-                      굿즈 제작하기
+                      이미지 저장
                     </motion.button>
                   </div>
                 </div>

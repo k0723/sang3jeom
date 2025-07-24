@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package user;
+
+option java_multiple_files = true;
+option java_package = "com.example.demo.grpc"; // 생성될 패키지
+option java_outer_classname = "UserProto";
+
+message GetUserRequest {
+  int64 id = 1;
+}
+
+message UserInfo {
+  int64 id = 1;
+  string email = 2;
+  string name = 3;
+}
+
+message GetUserResponse {
+  UserInfo user = 1;
+}
+
+service UserService {
+  rpc GetUserById(GetUserRequest) returns (GetUserResponse);
+}

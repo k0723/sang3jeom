@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { 
   Mail, 
   Lock, 
@@ -24,6 +25,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
@@ -48,13 +50,40 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError('');
     // TODO: 실제 회원가입 로직 구현
-    setTimeout(() => {
-      setIsLoading(false);
-      // 회원가입 성공 후 홈으로 이동
-      window.location.href = '/';
-    }, 2000);
+    try {
+    // 1) POST 요청: /signup (회원가입)
+    const response = await axios.post(
+      'http://localhost:8080/signup',      // 백엔드 URL을 실제 주소로 바꿔주세요
+      {
+        username:            formData.name,
+        email:           formData.email,
+        password:        formData.password,
+        confirmPassword: formData.confirmPassword,
+        phone:           formData.phone,
+        agreements       // { terms, privacy, marketing }
+      }
+    );
+
+    // 2) 성공 처리
+    console.log('회원가입 성공:', response.data);
+    // 예: JWT 저장 또는 리다이렉트
+    window.location.href = '/';
+
+  } catch (err) {
+    // 3) 에러 처리
+    console.error('회원가입 실패:', err);
+    if (err.response) {
+      // 서버가 응답을 반환했으나 상태 코드가 2xx 아닌 경우
+      setError(err.response.data.message || '서버 오류가 발생했습니다.');
+    } else {
+      // 네트워크 오류 등
+      setError('네트워크 오류가 발생했습니다.');
+    }
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   const isFormValid = () => {
