@@ -40,11 +40,13 @@ function parseJwt(token) {
 
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
-      const [preview, setPreview] = useState(null);
-    const [style, setStyle] = useState("귀여움");
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [style, setStyle] = useState("귀여움");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [aiImageCount, setAiImageCount] = useState(0);
+  const [isCheckingImageCount, setIsCheckingImageCount] = useState(true);
   const fileInput = useRef();
   const navigate = useNavigate();
 
@@ -54,7 +56,42 @@ export default function CharacterMaker({ onDone }) {
       once: true,
       offset: 100
     });
+    
+    // AI 이미지 개수 확인
+    checkAiImageCount();
   }, []);
+
+  // AI 이미지 개수 확인 함수
+  const checkAiImageCount = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        console.log("JWT 토큰이 없습니다. AI 이미지 개수를 확인할 수 없습니다.");
+        setIsCheckingImageCount(false);
+        return;
+      }
+
+      const userId = 1; // 임시로 고정
+      const res = await fetch(`/api/ai-images/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setAiImageCount(data.length);
+        console.log("현재 AI 이미지 개수:", data.length);
+      } else {
+        console.error("AI 이미지 개수 확인 실패:", res.status);
+      }
+    } catch (error) {
+      console.error("AI 이미지 개수 확인 오류:", error);
+    } finally {
+      setIsCheckingImageCount(false);
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -129,19 +166,32 @@ export default function CharacterMaker({ onDone }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // AI 이미지 개수 제한 확인
+    if (aiImageCount >= 3) {
+      alert('AI 캐릭터는 최대 3개까지만 생성할 수 있습니다.\n더 만들고 싶으시면 마이페이지에서 기존 이미지를 삭제해주세요.');
+      return;
+    }
+    
+    if (!image) {
+      setError("이미지를 선택해주세요.");
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setError("");
     try {
-              const data = await generateCharacter({
-          imageFile: image,
-          style,
-        });
+      const data = await generateCharacter({
+        imageFile: image,
+        style,
+      });
       setResult(data);
     } catch (err) {
-      setError(err.message || "AI 변환 실패");
-    }
+      setError(err.message);
+    } finally {
       setLoading(false);
+    }
   };
 
   const handleDownload = () => {
@@ -158,12 +208,14 @@ export default function CharacterMaker({ onDone }) {
   const handleSaveImage = async () => {
     // 임시로 userId를 1로 고정
     const userId = 1;
-    let jwt = sessionStorage.getItem("jwt");
-    try {
-      if (jwt && jwt.startsWith("{")) {
-        jwt = JSON.parse(jwt).token;
-      }
-    } catch (e) {}
+    
+    // JWT 토큰 확인 - localStorage에서 가져오기
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    
     if (!userId) {
       alert("유저 정보를 확인할 수 없습니다.");
       return;
@@ -172,6 +224,13 @@ export default function CharacterMaker({ onDone }) {
       alert("저장할 이미지가 없습니다.");
       return;
     }
+    
+    // AI 이미지 개수 제한 확인
+    if (aiImageCount >= 3) {
+      alert('AI 캐릭터는 최대 3개까지만 저장할 수 있습니다.\n더 저장하고 싶으시면 마이페이지에서 기존 이미지를 삭제해주세요.');
+      return;
+    }
+    
     // result.result_url이 URL일 경우, Blob으로 변환
     const response = await fetch(result.result_url);
     const blob = await response.blob();
@@ -182,12 +241,14 @@ export default function CharacterMaker({ onDone }) {
     const res = await fetch("/api/ai-images", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${jwt}`
+        "Authorization": `Bearer ${accessToken}`
       },
       body: formData
     });
     if (res.ok) {
       alert("이미지 저장 성공!");
+      // AI 이미지 개수 증가
+      setAiImageCount(prev => prev + 1);
     } else {
       const err = await res.json();
       alert(err.message || "저장 실패");
@@ -245,6 +306,34 @@ export default function CharacterMaker({ onDone }) {
                     <div className="text-sm text-gray-600">{stat.label}</div>
                   </div>
                 ))}
+              </div>
+              
+              {/* AI 이미지 개수 정보 */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-800">내 AI 캐릭터</h3>
+                    <p className="text-sm text-blue-600">
+                      {isCheckingImageCount ? '확인 중...' : `${aiImageCount}/3개 보유`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {aiImageCount >= 3 ? (
+                      <div className="text-red-600 text-sm font-medium">
+                        최대 개수 도달
+                      </div>
+                    ) : (
+                      <div className="text-green-600 text-sm font-medium">
+                        {3 - aiImageCount}개 더 생성 가능
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {aiImageCount >= 3 && (
+                  <div className="mt-2 text-xs text-red-600">
+                    더 만들고 싶으시면 마이페이지에서 기존 이미지를 삭제해주세요.
+                  </div>
+                )}
               </div>
             </motion.div>
 

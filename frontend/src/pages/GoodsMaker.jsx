@@ -188,38 +188,38 @@ export default function GoodsMaker() {
     const fetchImages = async () => {
       console.log("AI 이미지 불러오기 시작, userId:", userId);
       
-      const jwt = sessionStorage.getItem("jwt");
-      console.log("JWT 토큰:", jwt ? "존재함" : "없음");
+      // JWT 토큰 확인
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        console.log("JWT 토큰이 없습니다. AI 이미지를 불러올 수 없습니다.");
+        return;
+      }
+
+      console.log("AI 이미지 불러오기:", userId);
       
       try {
-        let token = null;
-        if (jwt) {
-          if (jwt.startsWith("{")) {
-            token = JSON.parse(jwt).token;
-            console.log("JWT 객체에서 토큰 추출됨");
-          } else {
-            token = jwt;
-          }
-        }
-        
-        console.log("API 호출:", `/api/ai-images/user/${userId}`);
-        
-        // 헤더 설정
-        const headers = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        
         const res = await fetch(`/api/ai-images/user/${userId}`, {
-          headers: headers
+          headers: { 
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
         });
-        
+          
         console.log("API 응답 상태:", res.status);
         
         if (res.ok) {
           const data = await res.json();
           console.log("AI 이미지 데이터:", data);
           setAiImages(data);
+          
+          // 이미지 프리로딩
+          data.forEach(img => {
+            const preloadImg = new Image();
+            preloadImg.crossOrigin = "anonymous";
+            preloadImg.onload = () => console.log("이미지 프리로딩 완료:", img.imageUrl);
+            preloadImg.onerror = () => console.error("이미지 프리로딩 실패:", img.imageUrl);
+            preloadImg.src = img.imageUrl;
+          });
         } else {
           console.error("AI 이미지 불러오기 실패:", res.status);
           const errorText = await res.text();
@@ -234,6 +234,8 @@ export default function GoodsMaker() {
 
   // 통합된 캔버스 렌더링 useEffect
   useEffect(() => {
+    console.log("캔버스 렌더링 시작:", { uploadedImg, aiImg, selected: selected.key, imgLoaded });
+    
     // 진행 중인 이미지 로딩 중단
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -241,8 +243,16 @@ export default function GoodsMaker() {
     abortControllerRef.current = new AbortController();
     
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.log("캔버스가 없습니다.");
+      return;
+    }
+    
     const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.log("캔버스 컨텍스트를 가져올 수 없습니다.");
+      return;
+    }
     
     // 캔버스 즉시 비우기
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -250,11 +260,15 @@ export default function GoodsMaker() {
     // 배경 이미지 로드
     const bg = new window.Image();
     bg.crossOrigin = "anonymous";
-    bg.src = selected.img;
     
     bg.onload = () => {
       // AbortController로 중단되었는지 확인
-      if (abortControllerRef.current?.signal.aborted) return;
+      if (abortControllerRef.current?.signal.aborted) {
+        console.log("배경 이미지 로딩이 중단되었습니다.");
+        return;
+      }
+      
+      console.log("배경 이미지 로드 완료");
       
       // 배경 그리기 (비율 맞춤)
       const imgRatio = bg.width / bg.height;
@@ -274,82 +288,240 @@ export default function GoodsMaker() {
       ctx.drawImage(bg, bgX, bgY, bgW, bgH);
       
       // uploadedImg가 있으면 합성 이미지도 그리기
-      if (uploadedImg) {
+      const imageToDraw = uploadedImg || aiImg;
+      if (imageToDraw) {
+        console.log("합성 이미지 로딩 시작:", imageToDraw);
         const fg = new window.Image();
         fg.crossOrigin = "anonymous";
-        fg.src = uploadedImg;
         
         fg.onload = () => {
           // AbortController로 중단되었는지 확인
-          if (abortControllerRef.current?.signal.aborted) return;
+          if (abortControllerRef.current?.signal.aborted) {
+            console.log("합성 이미지 로딩이 중단되었습니다.");
+            return;
+          }
+          
+          console.log("합성 이미지 로드 완료, 캔버스에 그리기 시작");
+          
+          // 기본 이미지 크기 (imgScale 적용)
+          const baseWidth = 270 * imgScale;
+          const baseHeight = 270 * imgScale;
+          const aspect = fg.width / fg.height;
+          let drawW = baseWidth, drawH = baseHeight;
+          if (aspect > 1) {
+            drawH = baseWidth / aspect;
+          } else {
+            drawW = baseHeight * aspect;
+          }
           
           // 굿즈별 합성 효과
           if (selected.key === "mug") {
+            const mugWidth = 140 * imgScale;
+            const mugHeight = 140 * imgScale;
+            let mugDrawW = mugWidth, mugDrawH = mugHeight;
+            if (aspect > 1) {
+              mugDrawH = mugWidth / aspect;
+            } else {
+              mugDrawW = mugHeight * aspect;
+            }
             drawCylindricalImage(
-              ctx,
-              fg,
-              canvas.width * 0.28 + imgOffset.x,
-              canvas.height * 0.22 + imgOffset.y,
-              canvas.width * 0.44 * imgScale,
-              canvas.height * 0.56 * imgScale,
-              20
+              ctx, fg, 
+              imgOffset.x + canvas.width / 2 - mugDrawW / 2, 
+              imgOffset.y + canvas.height / 2 - mugDrawH / 2, 
+              mugDrawW, mugDrawH
             );
           } else if (selected.key === "tshirt") {
+            // T-shirt 합성
+            const tshirtWidth = 260 * imgScale;
+            const tshirtHeight = 260 * imgScale;
+            let tshirtDrawW = tshirtWidth, tshirtDrawH = tshirtHeight;
+            if (aspect > 1) {
+              tshirtDrawH = tshirtWidth / aspect;
+            } else {
+              tshirtDrawW = tshirtHeight * aspect;
+            }
             ctx.save();
-            ctx.globalAlpha = 0.92;
-            ctx.globalCompositeOperation = "multiply";
-            ctx.shadowColor = "rgba(0,0,0,0.10)";
-            ctx.shadowBlur = 8;
-            const fgW = canvas.width * 0.38 * imgScale;
-            const fgH = canvas.height * 0.38 * imgScale;
-            const fgX = canvas.width * 0.31 + imgOffset.x;
-            const fgY = canvas.height * 0.22 + imgOffset.y;
-            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.drawImage(fg, imgOffset.x + 100, imgOffset.y + 80, tshirtDrawW, tshirtDrawH);
             ctx.restore();
           } else if (selected.key === "ecobag") {
+            // 에코백 합성
+            const bagWidth = 390 * imgScale;
+            const bagHeight = 390 * imgScale;
+            let bagDrawW = bagWidth, bagDrawH = bagHeight;
+            if (aspect > 1) {
+              bagDrawH = bagWidth / aspect;
+            } else {
+              bagDrawW = bagHeight * aspect;
+            }
             ctx.save();
-            ctx.globalAlpha = 0.95;
-            ctx.globalCompositeOperation = "multiply";
-            ctx.shadowColor = "rgba(0,0,0,0.08)";
-            ctx.shadowBlur = 6;
-            const fgW = canvas.width * 0.32 * imgScale;
-            const fgH = canvas.height * 0.38 * imgScale;
-            const fgX = canvas.width * 0.34 + imgOffset.x;
-            const fgY = canvas.height * 0.28 + imgOffset.y;
-            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.drawImage(fg, imgOffset.x + 50, imgOffset.y + 50, bagDrawW, bagDrawH);
             ctx.restore();
           } else if (selected.key === "case") {
-            ctx.save();
-            ctx.globalAlpha = 0.98;
-            ctx.globalCompositeOperation = "multiply";
-            ctx.shadowColor = "rgba(0,0,0,0.10)";
-            ctx.shadowBlur = 4;
-            const printX = canvas.width * 0.41 + imgOffset.x;
-            const printY = canvas.height * 0.13 + imgOffset.y;
-            const printW = canvas.width * 0.18 * imgScale;
-            const printH = canvas.height * 0.74 * imgScale;
-            const ratio = fg.width / fg.height;
-            let drawW = printW, drawH = printH;
-            if (drawW / drawH > ratio) {
-              drawW = drawH * ratio;
+            // 폰케이스 합성
+            const caseWidth = 200 * imgScale;
+            const caseHeight = 200 * imgScale;
+            let caseDrawW = caseWidth, caseDrawH = caseHeight;
+            if (aspect > 1) {
+              caseDrawH = caseWidth / aspect;
             } else {
-              drawH = drawW / ratio;
+              caseDrawW = caseHeight * aspect;
             }
-            const drawX = printX + (printW - drawW) / 2;
-            const drawY = printY + (printH - drawH) / 2;
-            ctx.drawImage(fg, drawX, drawY, drawW, drawH);
+            ctx.save();
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.drawImage(fg, imgOffset.x + 75, imgOffset.y + 100, caseDrawW, caseDrawH);
             ctx.restore();
           } else {
-            const fgW = fg.width * imgScale * 0.5;
-            const fgH = fg.height * imgScale * 0.5;
-            const fgX = (canvas.width - fgW) / 2 + imgOffset.x;
-            const fgY = (canvas.height - fgH) / 2 + imgOffset.y;
-            ctx.drawImage(fg, fgX, fgY, fgW, fgH);
+            // 기본 합성
+            ctx.drawImage(fg, imgOffset.x, imgOffset.y, drawW, drawH);
           }
+          
+          console.log("합성 완료, 로딩 상태 해제");
+          setImgLoaded(true);
+          bgRef.current = bg;
+          fgRef.current = fg;
         };
+        
+        fg.onerror = (error) => {
+          console.error("합성 이미지 로딩 실패:", error);
+          setImgLoaded(true);
+        };
+        
+        fg.src = imageToDraw;
+      } else {
+        console.log("합성할 이미지가 없습니다.");
+        setImgLoaded(true);
+        bgRef.current = bg;
+        fgRef.current = null;
       }
     };
-  }, [uploadedImg, selected, imgScale, imgOffset]);
+    
+    bg.onerror = (error) => {
+      console.error("배경 이미지 로딩 실패:", error);
+      setImgLoaded(true);
+    };
+    
+    bg.src = selected.img;
+  }, [uploadedImg, aiImg, selected, imgLoaded, imgScale]);
+
+  // 이미지 이동 시 합성 이미지만 다시 그리기 (깜빡임 방지)
+  useEffect(() => {
+    if (!bgRef.current) return;
+    
+    const updateCanvas = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      
+      // 배경 이미지 다시 그리기 (캐시된 이미지 사용)
+      const bg = bgRef.current;
+      const imgRatio = bg.width / bg.height;
+      const canvasRatio = canvas.width / canvas.height;
+      let bgW, bgH, bgX, bgY;
+      if (imgRatio > canvasRatio) {
+        bgH = canvas.height;
+        bgW = canvas.height * imgRatio;
+        bgX = (canvas.width - bgW) / 2;
+        bgY = 0;
+      } else {
+        bgW = canvas.width;
+        bgH = canvas.width / imgRatio;
+        bgX = 0;
+        bgY = (canvas.height - bgH) / 2;
+      }
+      ctx.drawImage(bg, bgX, bgY, bgW, bgH);
+      
+      // 합성 이미지 다시 그리기
+      const imageToDraw = uploadedImg || aiImg;
+      if (imageToDraw && fgRef.current) {
+        const fg = fgRef.current;
+        
+        // 기본 이미지 크기 (imgScale 적용)
+        const baseWidth = 270 * imgScale;
+        const baseHeight = 270 * imgScale;
+        const aspect = fg.width / fg.height;
+        let drawW = baseWidth, drawH = baseHeight;
+        if (aspect > 1) {
+          drawH = baseWidth / aspect;
+        } else {
+          drawW = baseHeight * aspect;
+        }
+        
+        // 굿즈별 합성 효과
+        if (selected.key === "mug") {
+          const mugWidth = 140 * imgScale;
+          const mugHeight = 140 * imgScale;
+          let mugDrawW = mugWidth, mugDrawH = mugHeight;
+          if (aspect > 1) {
+            mugDrawH = mugWidth / aspect;
+          } else {
+            mugDrawW = mugHeight * aspect;
+          }
+          drawCylindricalImage(
+            ctx, fg, 
+            imgOffset.x + canvas.width / 2 - mugDrawW / 2, 
+            imgOffset.y + canvas.height / 2 - mugDrawH / 2, 
+            mugDrawW, mugDrawH
+          );
+        } else if (selected.key === "tshirt") {
+          // T-shirt 합성
+          const tshirtWidth = 260 * imgScale;
+          const tshirtHeight = 260 * imgScale;
+          let tshirtDrawW = tshirtWidth, tshirtDrawH = tshirtHeight;
+          if (aspect > 1) {
+            tshirtDrawH = tshirtWidth / aspect;
+          } else {
+            tshirtDrawW = tshirtHeight * aspect;
+          }
+          ctx.save();
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.drawImage(fg, imgOffset.x + 100, imgOffset.y + 80, tshirtDrawW, tshirtDrawH);
+          ctx.restore();
+        } else if (selected.key === "ecobag") {
+          // 에코백 합성
+          const bagWidth = 390 * imgScale;
+          const bagHeight = 390 * imgScale;
+          let bagDrawW = bagWidth, bagDrawH = bagHeight;
+          if (aspect > 1) {
+            bagDrawH = bagWidth / aspect;
+          } else {
+            bagDrawW = bagHeight * aspect;
+          }
+          ctx.save();
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.drawImage(fg, imgOffset.x + 50, imgOffset.y + 50, bagDrawW, bagDrawH);
+          ctx.restore();
+        } else if (selected.key === "case") {
+          // 폰케이스 합성
+          const caseWidth = 200 * imgScale;
+          const caseHeight = 200 * imgScale;
+          let caseDrawW = caseWidth, caseDrawH = caseHeight;
+          if (aspect > 1) {
+            caseDrawH = caseWidth / aspect;
+          } else {
+            caseDrawW = caseHeight * aspect;
+          }
+          ctx.save();
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.drawImage(fg, imgOffset.x + 75, imgOffset.y + 100, caseDrawW, caseDrawH);
+          ctx.restore();
+        } else {
+          // 기본 합성
+          ctx.drawImage(fg, imgOffset.x, imgOffset.y, drawW, drawH);
+        }
+      }
+    };
+    
+    // requestAnimationFrame을 사용하여 부드러운 렌더링
+    const animationId = requestAnimationFrame(updateCanvas);
+    
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [imgOffset, selected.key, uploadedImg, aiImg, imgScale]);
 
   useEffect(() => {
     // 굿즈 종류나 업로드 이미지가 바뀔 때마다 위치/크기 초기화
@@ -410,23 +582,62 @@ export default function GoodsMaker() {
 
   // AI 캐릭터 선택
   const handleSelectAiImage = (url) => {
+    console.log("AI 이미지 선택:", url);
     setUploadedImg(url);
+    setAiImg(url); // aiImg도 함께 설정
+    setImgLoaded(false); // 로딩 상태 초기화
+    
+    // 이미지가 이미 로드되어 있는지 확인
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    
+    img.onload = () => {
+      console.log("선택된 AI 이미지 로드 완료:", url);
+      // 이미지가 완전히 로드된 후에 로딩 상태 해제
+      setTimeout(() => {
+        setImgLoaded(true);
+      }, 50); // 약간의 지연으로 캔버스 렌더링이 완료되도록 함
+    };
+    
+    img.onerror = () => {
+      console.error("선택된 AI 이미지 로드 실패:", url);
+      setImgLoaded(true); // 에러가 나도 로딩 상태는 해제
+    };
+    
+    // 이미 완전히 로드된 이미지인 경우
+    if (img.complete) {
+      console.log("이미지가 이미 완전히 로드되어 있음:", url);
+      setImgLoaded(true);
+    } else {
+      img.src = url;
+    }
   };
 
   const handleCanvasMouseDown = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
     setDragging(true);
-    setDragStart({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    setDragStart({ x, y });
   };
 
   const handleCanvasMouseMove = (e) => {
     if (!dragging) return;
-    const dx = e.nativeEvent.offsetX - dragStart.x;
-    const dy = e.nativeEvent.offsetY - dragStart.y;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const dx = x - dragStart.x;
+    const dy = y - dragStart.y;
+    
     setImgOffset(prev => ({
       x: prev.x + dx,
       y: prev.y + dy
     }));
-    setDragStart({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    
+    setDragStart({ x, y });
   };
 
   const handleCanvasMouseUp = () => {
@@ -485,6 +696,49 @@ export default function GoodsMaker() {
     } catch (e) {
       alert("장바구니 추가 중 오류 발생");
     }
+  };
+
+  // 굿즈 저장 함수
+  const handleSaveGoods = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const userId = 1; // 실제 로그인 유저 ID로 교체 필요
+    const goodsType = selected.key;
+    setImgLoaded(true);
+
+    // JWT 토큰
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+
+    // 캔버스 이미지를 Blob으로 변환
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('이미지 변환 실패');
+        return;
+      }
+      const file = new File([blob], `${goodsType}_goods.png`, { type: blob.type });
+      const formData = new FormData();
+      formData.append('userId', userId);
+      formData.append('goodsType', goodsType);
+      formData.append('file', file);
+
+      const res = await fetch('/api/user-goods', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: formData
+      });
+      if (res.ok) {
+        alert('굿즈가 저장되었습니다!');
+      } else {
+        const err = await res.json();
+        alert('굿즈 저장 실패: ' + (err.message || '오류'));
+      }
+    }, 'image/png');
   };
 
   return (
@@ -606,11 +860,11 @@ export default function GoodsMaker() {
           {/* Right Column - Preview and Details */}
           <div className="lg:col-span-2 space-y-8">
             {/* Preview Section */}
-            <div className="flex flex-col items-center min-h-[420px] justify-center bg-gray-50 rounded-xl shadow mb-4 border">
+            <div className="flex flex-col items-center min-h-[420px] justify-center bg-gray-50 rounded-xl shadow mb-4 border relative">
               {/* 미리보기 영역 렌더링 부분 */}
               <>
                 <div className="flex items-center gap-2 my-2">
-                  <label className="text-sm text-gray-700">이미지 크기</label>
+                  <label className="text-sm font-medium text-gray-700">이미지 크기</label>
                   <input
                     type="range"
                     min="0.2"
@@ -618,43 +872,84 @@ export default function GoodsMaker() {
                     step="0.01"
                     value={imgScale}
                     onChange={e => setImgScale(Number(e.target.value))}
-                    className="w-40"
+                    className="w-40 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                   />
-                  <span className="text-xs text-gray-500">{Math.round(imgScale * 100)}%</span>
+                  <span className="text-sm font-semibold text-blue-600 min-w-[3rem]">
+                    {Math.round(imgScale * 100)}%
+                  </span>
                 </div>
                 <canvas
                   ref={canvasRef}
                   key={selected.key} // 굿즈 변경 시 캔버스 완전히 새로 생성
                   width={800}
                   height={450}
-                  className="rounded-xl"
+                  className="rounded-xl cursor-move"
+                  style={{
+                    imageRendering: 'auto',
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden'
+                  }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={handleCanvasMouseUp}
                 />
+                {!imgLoaded && (uploadedImg || aiImg) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-xl">
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="text-gray-600">이미지 로딩 중...</span>
+                    </div>
+                  </div>
+                )}
                 {!(uploadedImg || aiImg) && (
                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-lg py-20 pointer-events-none">
+                    <div className="text-center">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p>AI 캐릭터를 선택해주세요</p>
+                    </div>
                   </div>
                 )}
               </>
+            </div>
+            {/* 굿즈 저장 안내 및 버튼 */}
+            <div className="flex flex-col items-center my-8">
+              <div className="mb-2 text-gray-600 text-sm">합성 결과를 저장하려면 아래 버튼을 눌러주세요</div>
+              <button
+                className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold text-lg shadow hover:bg-blue-700 transition-colors duration-300"
+                onClick={handleSaveGoods}
+                disabled={!imgLoaded}
+              >
+                굿즈 저장하기
+              </button>
             </div>
 
             {/* AI Image Upload */}
             <div className="mb-6 flex flex-col items-center">
               <h3 className="font-semibold mb-2">내 AI 캐릭터 선택</h3>
               {aiImages.length > 0 ? (
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-wrap justify-center">
                   {aiImages.map(img => (
-                    <img
-                      key={img.id}
-                      src={img.imageUrl}
-                      alt="AI 캐릭터"
-                      className={`w-24 h-24 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 ${
-                        uploadedImg === img.imageUrl ? 'border-blue-500 shadow-lg' : 'border-transparent hover:border-gray-300'
-                      }`}
-                      onClick={() => handleSelectAiImage(img.imageUrl)}
-                    />
+                    <div key={img.id} className="relative group">
+                      <img
+                        src={img.imageUrl}
+                        alt="AI 캐릭터"
+                        className={`w-24 h-24 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 hover:scale-105 ${
+                          uploadedImg === img.imageUrl ? 'border-blue-500 shadow-lg' : 'border-transparent hover:border-gray-300'
+                        }`}
+                        onClick={() => handleSelectAiImage(img.imageUrl)}
+                        onLoad={() => console.log("AI 이미지 로드 완료:", img.imageUrl)}
+                        onError={(e) => console.error("AI 이미지 로드 실패:", img.imageUrl, e)}
+                      />
+                      {uploadedImg === img.imageUrl && (
+                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                          ✓
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -679,6 +974,18 @@ export default function GoodsMaker() {
                     </svg>
                     AI 캐릭터 만들기
                   </Link>
+                </div>
+              )}
+              
+              {/* 선택된 이미지 정보 */}
+              {uploadedImg && (
+                <div className="mt-4 text-center">
+                  <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    AI 캐릭터가 선택되었습니다
+                  </div>
                 </div>
               )}
             </div>
