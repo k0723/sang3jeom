@@ -170,7 +170,7 @@ public class SecurityConfig {
   @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5177"));
+        config.setAllowedOrigins(List.of("https://sang3jeom.com", "sang3jeom.com"));
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
