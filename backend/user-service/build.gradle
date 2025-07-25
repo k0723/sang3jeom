@@ -32,14 +32,20 @@ dependencyManagement {
 
 dependencies {
 
-	//openfegin
-	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	// Spring Cloud OpenFeign
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	//Fegin Logger 
+	implementation 'io.github.openfeign:feign-core'
+    implementation 'io.github.openfeign:feign-slf4j'
+
+	//kafka
+	implementation 'org.springframework.kafka:spring-kafka'
+	//s3
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.696'
 	//redis 
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
-
-	
 
 	implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -68,7 +74,6 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.mysql:mysql-connector-j'
-	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
 }
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:${protobufVersion}" }

@@ -111,7 +111,7 @@ public class AuthController {
     ) {
         // UserDetails 객체를 다루는 AuthService 로직에 맞춰 cast/처리
         OAuth2User oauth2 = (OAuth2User) authentication.getPrincipal();
-        UserEntity user = authService.processOAuthPostLogin(oauth2);
+        UserEntity user = authService.processOAuthPostLogin(oauth2, provider);
 
         String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
         JwtResponseDTO dto = tokenService.issueTokens(user.getId(), role);
