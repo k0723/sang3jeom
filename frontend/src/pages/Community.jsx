@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
+import PostUploadModal from '../components/PostUploadModal';
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -252,10 +253,15 @@ function CommunityPostEditModal({ post, isOpen, onClose, onUpdated }) {
     e.preventDefault();
     setLoading(true);
     try {
+      const token = localStorage.getItem("accessToken");
       await axios.put(`http://localhost:8083/goods-posts/${post.id}`, {
         content,
         imageUrl,
         status
+      }, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
       });
       alert('수정되었습니다.');
       if (onUpdated) onUpdated();
@@ -320,7 +326,7 @@ function CommunityPostEditModal({ post, isOpen, onClose, onUpdated }) {
   );
 }
 
-function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, onSave, onDetail, onLikeToggle, onCommentClick }) {
+function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, onSave, onDetail, onLikeToggle, onCommentClick, userId }) {
   const [showMenu, setShowMenu] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount || 0);
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
@@ -368,17 +374,20 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
             </div>
           </div>
         </div>
-        <div className="relative">
-          <button onClick={() => setShowMenu(v => !v)} className="p-2 rounded-full hover:bg-gray-100">
-            <MoreHorizontal className="w-5 h-5 text-gray-500" />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-28 bg-white border rounded shadow z-10">
-              <button onClick={() => onEdit(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50">수정</button>
-              <button onClick={() => onDelete(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50 text-red-500">삭제</button>
-            </div>
-          )}
-        </div>
+        {/* 수정/삭제 버튼: 본인만 노출 */}
+        {userId === post.userId && (
+          <div className="relative">
+            <button onClick={() => setShowMenu(v => !v)} className="p-2 rounded-full hover:bg-gray-100">
+              <MoreHorizontal className="w-5 h-5 text-gray-500" />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-28 bg-white border rounded shadow z-10">
+                <button onClick={() => onEdit(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50">수정</button>
+                <button onClick={() => onDelete(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50 text-red-500">삭제</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {/* 본문 */}
       <div className="mb-4">
@@ -443,37 +452,40 @@ export default function Community() {
   const [editTargetPost, setEditTargetPost] = useState(null);
   // 추가: 굿즈 게시물 등록 모달 상태
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  // 굿즈 게시물 등록 모달 state
-  const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState("전체 공개");
-  const [image, setImage] = useState(null);
-  const [showEmoji, setShowEmoji] = useState(false);
+  // 굿즈 게시물 등록 모달 state 제거 (content, visibility, image, showEmoji)
+  // 추가: 현재 로그인 유저 ID
+  const [userId, setUserId] = useState(null);
 
-  // 이미지 업로드 핸들러
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setImage(ev.target.result);
-      reader.readAsDataURL(file);
+  // 유저 정보 가져오기
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    fetch("http://localhost:8080/users/me", {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(user => setUserId(user.id))
+      .catch(() => setUserId(null));
+  }, []);
+
+  // 게시글 등록 API 연동
+  const handleCreatePost = async ({ content, visibility, image }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.post('http://localhost:8083/goods-posts', {
+        content,
+        visibility,
+        imageUrl: image
+      }, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      setCreateModalOpen(false);
+      fetchPosts();
+    } catch (err) {
+      alert('게시글 등록 실패: ' + (err.response?.data?.message || err.message));
     }
-  };
-  // 이모지 선택
-  const handleEmojiSelect = (emoji) => {
-    setContent(content + emoji);
-    setShowEmoji(false);
-  };
-  // 게시 버튼 핸들러(샘플, 실제 업로드 연동 필요)
-  const handleCreatePost = (e) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    // TODO: 실제 업로드 연동
-    setCreateModalOpen(false);
-    setContent("");
-    setVisibility("전체 공개");
-    setImage(null);
-    setShowEmoji(false);
-    // 게시글 목록 새로고침 등 필요시 추가
   };
 
   // 게시글 데이터 + 좋아요 상태 가져오기
@@ -559,7 +571,12 @@ export default function Community() {
   const handleDelete = async (post) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`http://localhost:8083/goods-posts/${post.id}`);
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(`http://localhost:8083/goods-posts/${post.id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       alert('삭제되었습니다.');
       fetchPosts();
     } catch (err) {
@@ -641,6 +658,7 @@ export default function Community() {
               onDetail={handleDetail}
               onLikeToggle={() => handleLikeToggle(post.id)}
               onCommentClick={handleCommentClick}
+              userId={userId} // 추가
             />
           ))
         )}
@@ -661,97 +679,20 @@ export default function Community() {
         onClose={handleEditModalClose}
         onUpdated={fetchPosts}
       />
-      {/* 굿즈 게시물 등록 모달 (PostUploadModal 스타일) */}
-      {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fadeIn min-h-screen">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full relative flex flex-col items-center">
-            <button
-              className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700"
-              onClick={() => setCreateModalOpen(false)}
-              aria-label="닫기"
-            >×</button>
-            <h2 className="text-lg font-bold mb-4">굿즈 게시물 만들기</h2>
-            {/* 프로필/공개범위/본문 */}
-            <div className="flex items-center w-full mb-3">
-              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                <span className="text-gray-500 text-xl">👤</span>
-              </div>
-              <div>
-                <div className="font-semibold">이주형</div>
-                <select
-                  className="text-xs border rounded px-2 py-1 mt-1"
-                  value={visibility}
-                  onChange={e => setVisibility(e.target.value)}
-                >
-                  <option>전체 공개</option>
-                  <option>나만 보기</option>
-                </select>
-              </div>
-            </div>
-            <textarea
-              className="w-full border rounded p-3 mb-2 min-h-[80px] resize-none"
-              placeholder="상상공간 게시글 본문"
-              value={content}
-              onChange={e => setContent(e.target.value)}
-            />
-            {/* 첨부 이미지 */}
-            {image && (
-              <div className="relative w-full flex justify-center mb-2">
-                <img src={image} alt="굿즈 이미지" className="max-h-56 rounded-lg object-contain" />
-                <button
-                  className="absolute top-2 right-2 bg-white/80 rounded-full p-1 text-xl text-gray-500 hover:text-red-500"
-                  onClick={() => setImage(null)}
-                  aria-label="이미지 삭제"
-                >×</button>
-              </div>
-            )}
-            {/* 사진/이모지 버튼 영역 */}
-            <div className="flex w-full justify-end gap-2 mb-3 relative">
-              <label className="cursor-pointer flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl">
-                <span role="img" aria-label="사진">🖼️</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl relative"
-                  onClick={() => setShowEmoji((v) => !v)}
-                >
-                  <span role="img" aria-label="이모지">😊</span>
-                </button>
-                {showEmoji && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-5 gap-2 z-10" style={{ width: '220px' }}>
-                    {/* 꼬리(삼각형) */}
-                    <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-l border-t border-gray-200 rounded-tl-xl rotate-45 z-[-1]" />
-                    {EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        className="text-2xl hover:bg-gray-100 rounded p-2 text-center"
-                        onClick={() => handleEmojiSelect(emoji)}
-                        type="button"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mt-2"
-              onClick={handleCreatePost}
-              disabled={!content.trim()}
-            >
-              게시
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 굿즈 게시물 등록 모달 (PostUploadModal 사용) */}
+      <PostUploadModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onPost={handleCreatePost}
+      />
       <button
-        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center text-3xl font-bold z-50"
+        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center z-50"
         onClick={() => setCreateModalOpen(true)}
       >
-        +
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <line x1="16" y1="8" x2="16" y2="24" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+          <line x1="8" y1="16" x2="24" y2="16" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
       </button>
     </div>
   );
