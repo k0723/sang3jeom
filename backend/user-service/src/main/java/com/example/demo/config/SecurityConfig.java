@@ -135,7 +135,7 @@ public class SecurityConfig {
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
       .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
       .oauth2Login(oauth2 -> oauth2
-         .loginPage("/oauth2/authorization/google")
+         .loginPage("/oauth2/authorization/{registrationId}")
          .authorizationEndpoint(ae -> ae.baseUri("/oauth2/authorization"))
          .redirectionEndpoint(re -> re.baseUri("/oauth2/redirection/*"))
          .userInfoEndpoint(ui -> ui.userService(userService))
