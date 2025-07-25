@@ -1,0 +1,14 @@
+2025-07-25 11:05:58.150 [main] ERROR [o.s.b.diagnostics.LoggingFailureAnalysisReporter] : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+The bean 'user-service.FeignClientSpecification' could not be registered. A bean with that name has already been defined and overriding is disabled.
+
+Action:
+
+Consider renaming one of the beans or enabling overriding by setting spring.main.allow-bean-definition-overriding=true
+

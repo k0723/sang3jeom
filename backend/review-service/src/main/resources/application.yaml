@@ -2,6 +2,10 @@ server:
   port: 8084
 
 spring:
+  config:
+    import: "optional:dotenv:"  # .env 파일 로딩
+  main:
+    allow-bean-definition-overriding: true  # Bean 중복 정의 허용 (임시)
 # DB 접속 정보
   datasource:
     url: jdbc:mysql://localhost:3306/review-service
@@ -22,15 +26,41 @@ spring:
 
 # Feign Client가 호출할 user-service의 로컬 주소를 직접 지정
 service-urls:
-  user-service: http://localhost:8082
+  user-service: http://localhost:8080
+
+# Review Service 자체 설정
+review-service:
+  user-verification:
+    enabled: false  # 현재는 false로 설정 (User Service 개발자와 협의 후 true로 변경)
+    mock-mode: true # 개발환경에서 Mock 데이터 사용
+    fallback-on-error: true # 에러 시 Fallback 사용
+
+# Feign 설정
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000  # 연결 타임아웃 10초
+        readTimeout: 30000     # 읽기 타임아웃 30초
+        loggerLevel: full      # 로그 레벨
+      user-service:           # 특정 서비스별 설정
+        connectTimeout: 5000   # user-service는 더 짧게 설정
+        readTimeout: 10000
+  circuitbreaker:
+    enabled: true
+  compression:
+    request:
+      enabled: true
+    response:
+      enabled: true
 
 # S3 버킷 정보 & AWS 자격 증명
 cloud:
   aws:
     s3:
-      bucket: 's3://sang3jeomtest/review-service-image/'
+      bucket: sang3jeomtest
     credentials:
-      access-key: YOUR_ACCESS_KEY
-      secret-key: YOUR_SECRET_KEY
+      access-key: ${AWS_ACCESS_KEY_ID}  # .env에서 읽어옴
+      secret-key: ${AWS_SECRET_ACCESS_KEY}  # .env에서 읽어옴
     region:
       static: ap-northeast-2

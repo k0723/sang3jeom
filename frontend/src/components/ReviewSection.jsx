@@ -3,49 +3,81 @@ import axios from 'axios';
 import { Star } from 'lucide-react';
 
 const ReviewCard = ({ review }) => (
-    <div className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
-        <div className="flex items-center mb-3">
-            <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} className={i < review.rating ? 'fill-current' : ''} />
-                ))}
+    <div className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+                <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, i) => (
+                        <Star 
+                            key={i} 
+                            size={20} 
+                            className={i < review.rating ? 'fill-current' : ''} 
+                        />
+                    ))}
+                </div>
+                <span className="ml-3 text-lg font-semibold text-yellow-600">
+                    {review.rating}
+                </span>
             </div>
-            <span className="ml-2 text-sm font-semibold text-gray-800">{review.userId}</span>
+            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                사용자 {review.userId}
+            </span>
         </div>
+        
         {review.imageUrl && (
-            <img src={review.imageUrl} alt="리뷰 이미지" className="w-full h-48 object-cover rounded-md mb-3" />
+            <div className="mb-4">
+                <img 
+                    src={review.imageUrl} 
+                    alt="리뷰 이미지" 
+                    className="w-full h-64 object-cover rounded-lg" 
+                />
+            </div>
         )}
-        <p className="text-gray-700 text-sm">
+        
+        <p className="text-gray-800 text-base leading-relaxed">
             {review.content}
         </p>
+        
+        {review.createdAt && (
+            <div className="mt-4 pt-3 border-t border-gray-100">
+                <span className="text-xs text-gray-500">
+                    {new Date(review.createdAt).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    })}
+                </span>
+            </div>
+        )}
     </div>
 );
 
 export default function ReviewSection() {
     const [reviews, setReviews] = useState([]);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true); // 더 불러올 리뷰가 있는지 여부
+    const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(false);
 
-    // 최초 1개 리뷰 로드
+    // 최초 2개 리뷰 로드
     useEffect(() => {
-        fetchReviews(0, 1);
+        fetchReviews(0, 2, true);
     }, []);
 
-    const fetchReviews = async (pageNum, size) => {
+    const fetchReviews = async (pageNum, size, isFirstLoad = false) => {
         if (loading) return;
         setLoading(true);
+
         try {
             const response = await axios.get(`/api/reviews?page=${pageNum}&size=${size}`);
             const data = response.data;
+            const newReviews = data?.content || [];
 
-            const newReviews = data && Array.isArray(data.content) ? data.content : [];
+            if (isFirstLoad) {
+                setReviews(newReviews);
+            } else {
+                setReviews(prev => [...prev, ...newReviews]);
+            }
 
-            setReviews(prev => [...prev, ...newReviews]);
-
-            setHasMore(data && data.last === false);
-
-            setPage(pageNum + 1);
+            setHasMore(data && !data.last);
 
         } catch (error) {
             console.error("리뷰 로딩 실패:", error);
@@ -55,15 +87,15 @@ export default function ReviewSection() {
     };
 
     const handleLoadMore = () => {
-        // 다음 페이지에서 2개씩 불러오기
-        fetchReviews(page, 2);
+        const nextPage = Math.floor(reviews.length / 2);
+        fetchReviews(nextPage, 2, false);
     };
 
     return (
         <div className="bg-white rounded-2xl shadow-lg p-6 mt-8" data-aos="fade-up">
             <h2 className="text-xl font-bold text-gray-800 mb-6">고객 후기</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
                 {reviews.map(review => (
                     <ReviewCard key={review.id} review={review} />
                 ))}

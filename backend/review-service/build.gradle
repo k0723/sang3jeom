@@ -43,6 +43,9 @@ dependencies {
 	// S3
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 
+	// .env 파일 지원
+	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
 	// Database
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
