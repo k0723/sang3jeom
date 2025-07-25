@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, User, ShoppingCart, Heart, LogIn, UserPlus, Home, Palette, ChevronDown, LogOut, Users
@@ -13,6 +13,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef();
   
   useEffect(() => {
@@ -32,11 +33,21 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDropdown]);
 
+  // 로그인 체크 함수
+  const handleAuthRequiredClick = (path) => {
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   const navItems = [
-    { name: '홈', path: '/', icon: Home },
-    { name: 'AI 캐릭터', path: '/character-maker', icon: Palette },
-    { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart },
-    { name: '상상공간', path: '/community', icon: Users },
+    { name: '홈', path: '/', icon: Home, requiresAuth: false },
+    { name: 'AI 캐릭터', path: '/character-maker', icon: Palette, requiresAuth: true },
+    { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart, requiresAuth: true },
+    { name: '상상공간', path: '/community', icon: Users, requiresAuth: false },
   ];
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
@@ -72,6 +83,11 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => {
+                  if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                    e.preventDefault();
+                  }
+                }}
                 className={`flex items-center gap-1 px-4 py-2 rounded-lg font-semibold text-base transition-all duration-200 relative
                   ${location.pathname === item.path ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}
                   group
@@ -163,7 +179,13 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    onClick={() => setIsOpen(false)}
+                    onClick={(e) => {
+                      if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                        e.preventDefault();
+                      } else {
+                        setIsOpen(false);
+                      }
+                    }}
                     className={`flex items-center space-x-3 px-3 py-3 rounded-lg font-semibold text-lg transition-all duration-200 ${
                       location.pathname === item.path
                         ? 'text-blue-600 bg-blue-50'
