@@ -2,13 +2,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PostUploadModal from "../components/PostUploadModal";
 
 export default function OrderComplete() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
+  const [user, setUser] = useState(null);
   // location.state에서 필요한 정보 추출 (예시)
   const {
     orderId = "2020090519683953",
@@ -19,6 +20,20 @@ export default function OrderComplete() {
     amount = 64440,
     image = null
   } = location.state || {};
+
+  useEffect(() => {
+    if (!showModal) return;
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    fetch("http://localhost:8080/users/me", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(user => setUser(user))
+      .catch(() => setUser(null));
+  }, [showModal]);
 
   // 게시글 업로드 후 커뮤니티로 이동
   const handlePost = async (post) => {
@@ -103,7 +118,7 @@ export default function OrderComplete() {
           </div>
         </div>
       </div>
-      <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} />
+      <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} user={user} />
     </div>
   );
 } 
