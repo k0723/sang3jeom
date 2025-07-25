@@ -5,10 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import lombok.Getter;
 
 import java.util.Collection;
 import java.util.List;
 
+@Getter
 @RequiredArgsConstructor
 public class DomainUserDetails implements UserDetails {
 
@@ -56,5 +58,7 @@ public class DomainUserDetails implements UserDetails {
         // 필요시 가입취소 등 로직 추가
         return true;
     }
+    public Long getId() { return user.getId(); }
+    public UserEntity getUser() { return user; }
 
 }
