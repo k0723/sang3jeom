@@ -62,17 +62,23 @@ public class AuthService {
      * 신규 사용자면 회원가입, 기존 사용자면 조회 후 DTO 반환
      */
     @Transactional
-    public UserEntity processOAuthPostLogin(OAuth2User oauthUser) {
-        String email = oauthUser.getAttribute("email");
+    public UserEntity processOAuthPostLogin(OAuth2User oauthUser, String provider) {
+        String providerId = oauth2User.getAttribute("id").toString();
         return userRepo.findByEmail(email)
                 .orElseGet(() -> {
                     UserEntity newUser = UserEntity.builder()
+                            .provider(provider)
+                            .providerId(providerId)
                             .email(email)
                             .username(oauthUser.getAttribute("name"))
                             .name(oauthUser.getAttribute("name"))
                             .passwordHash("")
                             .roles(false)
-                            .profileImageUrl(oauthUser.getAttribute("picture"))
+                            .profileImageUrl(
+                               account != null
+                                 ? (String)((Map<String,Object>)account.get("profile")).get("profile_image_url")
+                                 : oauthUser.getAttribute("picture")
+                            )
                             .build();
                     log.info("New OAuth2 user registered: {}", email);
                     return userRepo.save(newUser);

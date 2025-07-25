@@ -14,6 +14,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+
 import java.util.Map;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler  {
                                         Authentication authentication) throws IOException {
         log.debug("[OAuth2SuccessHandler] success start");
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
+        String provider = ((OAuth2AuthenticationToken)authentication)
+                                                            .getAuthorizedClientRegistrationId();
         String email = oauth2User.getAttribute("email");
         String name  = oauth2User.getAttribute("name");
         String pic   = oauth2User.getAttribute("picture");
