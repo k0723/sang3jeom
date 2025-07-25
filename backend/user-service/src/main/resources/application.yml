@@ -76,10 +76,19 @@ logging:
   level:
     org.springframework.security: TRACE
 
+
 grpc:
   server:
     security:
       enabled: false
 
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${S3_REGION}
+    s3:
+      bucket: ${S3_BUCKET}
 
-    
