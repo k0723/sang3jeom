@@ -4,12 +4,15 @@ import com.sang3jeom.order_service.config.UserServiceClient;
 import com.sang3jeom.order_service.dto.CreateOrderRequest;
 import com.sang3jeom.order_service.dto.CreateOrderResponse;
 import com.sang3jeom.order_service.dto.DirectOrderRequest;
+import com.sang3jeom.order_service.dto.OrderStatsResponse;
 import com.sang3jeom.order_service.domain.Order;
 import com.sang3jeom.order_service.dto.UserInfoDTO;
 import com.sang3jeom.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -76,23 +79,55 @@ public class OrderService {
         System.out.println("userInfo.getUserId(): " + userInfo.getUserId());
         System.out.println("userInfo.getName(): " + userInfo.getName());
 
+        // 디버깅을 위한 로그 추가
+        System.out.println("[OrderService] DirectOrderRequest 값들:");
+        System.out.println("  goodsId: " + request.getGoodsId());
+        System.out.println("  goodsName: " + request.getGoodsName());
+        System.out.println("  quantity: " + request.getQuantity());
+        System.out.println("  price: " + request.getPrice());
+        System.out.println("  address: " + request.getAddress());
+        System.out.println("  memo: " + request.getMemo());
+
         Order order = new Order();
         order.setUserId(userInfo.getUserId());
         order.setUserName(userInfo.getName());
-        order.setStatus("PENDING");
+        order.setStatus("COMPLETED"); // PENDING에서 COMPLETED로 변경
         order.setAddress(request.getAddress());
         order.setMemo(request.getMemo());
         order.setPrice(request.getPrice());
         order.setQuantity(request.getQuantity());
+        order.setGoodsId(request.getGoodsId());
+        order.setGoodsName(request.getGoodsName());
+        
+        // 저장 전 로그
+        System.out.println("[OrderService] 저장 전 Order 엔티티:");
+        System.out.println("  goodsId: " + order.getGoodsId());
+        System.out.println("  goodsName: " + order.getGoodsName());
+        
         orderRepository.save(order);
-
-//        OrderItem item = new OrderItem();
-//        item.setOrderId(order.getId());
-//        item.setGoodsId(request.getGoodsId());
-//        item.setStatus("PENDING");
-//        item.setQuantity(request.getQuantity());
-//        orderItemRepository.save(item);
+        
+        // 저장 후 로그
+        System.out.println("[OrderService] 저장 후 Order 엔티티:");
+        System.out.println("  goodsId: " + order.getGoodsId());
+        System.out.println("  goodsName: " + order.getGoodsName());
 
         return new CreateOrderResponse(order.getId(), order.getStatus(), order.getOrderDate(), order.getQuantity(), order.getUserName(), order.getPrice(), order.getMemo());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersByUserId(Long userId) {
+        return orderRepository.findByUserIdOrderByOrderDateDesc(userId.intValue());
+    }
+
+    @Transactional(readOnly = true)
+    public OrderStatsResponse getOrderStatsByUserId(Long userId) {
+        List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDesc(userId.intValue());
+        
+        int totalOrders = orders.size();
+        int totalSpent = orders.stream()
+                .mapToInt(order -> (int) order.getPrice())
+                .sum();
+        
+        return new OrderStatsResponse(totalOrders, totalSpent);
     }
 }

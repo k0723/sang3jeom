@@ -36,6 +36,30 @@ export default function PaySuccess() {
     const addressValue = (address1 ? address1 : "") + (address2 ? " " + address2 : "");
     const quantityValue = quantity ? Number(quantity) : 1;
 
+    // sessionStorage에서 goodsName 가져오기
+    const goodsName = sessionStorage.getItem("goods_name") || "AI 캐릭터 상품";
+    
+    // 디버깅을 위한 로그 추가
+    console.log("PaySuccess - sessionStorage 값들:", {
+      goodsId: sessionStorage.getItem("goods_id"),
+      goodsName: sessionStorage.getItem("goods_name"),
+      quantity: sessionStorage.getItem("quantity"),
+      address: sessionStorage.getItem("address"),
+      memo: sessionStorage.getItem("memo")
+    });
+
+    // goodsId가 null인 경우 기본값 설정
+    const finalGoodsId = goodsId ? Number(goodsId) : 1;
+    const finalGoodsName = goodsName || "AI 캐릭터 상품";
+
+    console.log("PaySuccess - 최종 주문 데이터:", {
+      goodsId: finalGoodsId,
+      goodsName: finalGoodsName,
+      quantity: quantityValue,
+      address: addressValue,
+      price: price ? Number(price) : 1
+    });
+
     if (pg_token && tid && partner_order_id && partner_user_id) {
       fetch("http://localhost:8082/pay/approve", {
         method: "POST",
@@ -57,7 +81,8 @@ export default function PaySuccess() {
               "Authorization": `Bearer ${token}`
             },
             body: JSON.stringify({
-              goodsId: Number(goodsId),
+              goodsId: finalGoodsId,
+              goodsName: finalGoodsName,
               quantity: quantityValue,
               address: addressValue,
               memo: memo,
