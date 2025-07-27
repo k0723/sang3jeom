@@ -66,6 +66,21 @@ public class GoodsPostController {
         return ResponseEntity.ok(goodsPostService.getGoodsPostsByUserId(userId));
     }
 
+    // 내가 쓴 글 조회 API
+    @GetMapping("/my-posts")
+    public ResponseEntity<List<GoodsPostDTO>> getMyPosts(
+            @RequestHeader("Authorization") String token) {
+        
+        System.out.println("[GoodsPostController] 내가 쓴 글 조회 - 전달받은 Authorization 헤더: " + token);
+        
+        UserInfoDTO userInfo = userServiceClient.getUserInfo(token);
+        System.out.println("내가 쓴 글 조회 유저 ID: " + userInfo.getUserId());
+        System.out.println("내가 쓴 글 조회 유저 이름: " + userInfo.getName());
+        
+        List<GoodsPostDTO> posts = goodsPostService.getGoodsPostsByUserId(userInfo.getUserId().longValue());
+        return ResponseEntity.ok(posts);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<GoodsPostDTO> updateGoodsPost(
             @PathVariable Long id, 

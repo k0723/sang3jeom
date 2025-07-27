@@ -662,6 +662,37 @@ export default function GoodsMaker() {
 
   // 결제창 띄우기 함수
   const handleOrder = () => {
+    // goodsId와 goodsName 매핑
+    const getGoodsIdAndName = (goodsKey) => {
+      switch (goodsKey) {
+        case "mug": return { goodsId: 1, goodsName: "AI 캐릭터 머그컵" };
+        case "tshirt": return { goodsId: 2, goodsName: "AI 캐릭터 티셔츠" };
+        case "ecobag": return { goodsId: 3, goodsName: "AI 캐릭터 에코백" };
+        case "case": return { goodsId: 4, goodsName: "AI 캐릭터 폰케이스" };
+        default: return { goodsId: 1, goodsName: "AI 캐릭터 상품" };
+      }
+    };
+
+    const { goodsId, goodsName } = getGoodsIdAndName(selected.key);
+    
+    // 디버깅을 위한 로그 추가
+    console.log("GoodsMaker - 선택된 굿즈 정보:", {
+      selectedKey: selected.key,
+      goodsId: goodsId,
+      goodsName: goodsName,
+      quantity: quantity
+    });
+    
+    // sessionStorage에 goodsId와 goodsName 저장
+    sessionStorage.setItem("goods_id", goodsId.toString());
+    sessionStorage.setItem("goods_name", goodsName);
+    
+    // 저장 확인을 위한 로그
+    console.log("GoodsMaker - sessionStorage 저장 확인:", {
+      savedGoodsId: sessionStorage.getItem("goods_id"),
+      savedGoodsName: sessionStorage.getItem("goods_name")
+    });
+
     navigate("/order", { state: { product: {
       name: selected.label,
       desc: selected.description,

@@ -125,6 +125,35 @@ const OrderPage = () => {
     sessionStorage.setItem("phone", phone);
     sessionStorage.setItem("amount", product.price.toString());
     sessionStorage.setItem("quantity", product.quantity.toString()); // 수량 저장
+    
+    // 상품 정보에 따른 goodsId와 goodsName 설정
+    let goodsId = "1";
+    let goodsName = "AI 캐릭터 상품";
+    
+    // 상품 이름에 따라 goodsId와 goodsName 설정
+    if (product.name.toLowerCase().includes("머그컵") || product.name.toLowerCase().includes("mug")) {
+      goodsId = "1";
+      goodsName = "mug";
+    } else if (product.name.toLowerCase().includes("티셔츠") || product.name.toLowerCase().includes("t-shirt")) {
+      goodsId = "2";
+      goodsName = "tshirt";
+    } else if (product.name.toLowerCase().includes("에코백") || product.name.toLowerCase().includes("eco bag")) {
+      goodsId = "3";
+      goodsName = "echobag";
+    } else if (product.name.toLowerCase().includes("케이스") || product.name.toLowerCase().includes("case")) {
+      goodsId = "4";
+      goodsName = "case";
+    }
+    
+    // sessionStorage에 상품 정보 저장
+    sessionStorage.setItem("goods_id", goodsId);
+    sessionStorage.setItem("goods_name", goodsName);
+    
+    console.log("OrderPage - 상품 정보 저장:", {
+      goodsId,
+      goodsName,
+      productName: product.name
+    });
     const requestBody = {
       partnerOrderId: `ORDER_${Date.now()}`,
       partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체

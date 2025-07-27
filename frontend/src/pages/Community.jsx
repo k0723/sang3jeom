@@ -28,6 +28,27 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const [editCommentId, setEditCommentId] = useState(null);
   const [editCommentValue, setEditCommentValue] = useState('');
   const [commentMenuOpenId, setCommentMenuOpenId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 현재 유저 정보 가져오기
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+      
+      const response = await fetch("http://localhost:8080/users/me", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (err) {
+      console.error('유저 정보 가져오기 실패:', err);
+    }
+  };
 
   // 댓글 목록 가져오기
   const fetchComments = async () => {
@@ -50,9 +71,11 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
       setLoading(true);
       await axios.post(`http://localhost:8083/comments`, {
         content: newComment,
-        goodsPostId: post.id,
-        userId: 1, // 임시 사용자 ID
-        userName: '사용자' // 임시 사용자명
+        goodsPostId: Number(post.id)
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
       });
       setNewComment('');
       await fetchComments();
@@ -68,7 +91,15 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`http://localhost:8083/comments/${commentId}`);
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       await fetchComments();
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
@@ -90,9 +121,18 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const handleEditSave = async (commentId) => {
     if (!editCommentValue.trim()) return;
     try {
-      await axios.put(`http://localhost:8083/comments/${commentId}`, {
-        content: editCommentValue
-      });
+      const token = localStorage.getItem("accessToken");
+      await axios.put(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          content: editCommentValue
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       setEditCommentId(null);
       setEditCommentValue('');
       await fetchComments();
@@ -108,7 +148,10 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   };
 
   useEffect(() => {
-    if (isOpen) fetchComments();
+    if (isOpen) {
+      fetchComments();
+      fetchCurrentUser();
+    }
     // eslint-disable-next-line
   }, [isOpen, post.id]);
 
@@ -187,17 +230,19 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
                     ) : (
                       <div className="flex items-center">
                         <p className="text-sm text-gray-800 mb-1 flex-1">{comment.content}</p>
-                        <div className="relative ml-2">
-                          <button onClick={() => handleMenuToggle(comment.id)} className="p-1 rounded-full hover:bg-gray-100">
-                            <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                          </button>
-                          {commentMenuOpenId === comment.id && (
-                            <div className="absolute right-0 mt-2 w-20 bg-white border border-gray-200 rounded shadow z-10">
-                              <button onClick={() => { handleEditStart(comment); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-blue-50 text-blue-600">수정</button>
-                              <button onClick={() => { handleDeleteComment(comment.id); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-red-50 text-red-500">삭제</button>
-                            </div>
-                          )}
-                        </div>
+                        {currentUser && currentUser.id === comment.userId && (
+                          <div className="relative ml-2">
+                            <button onClick={() => handleMenuToggle(comment.id)} className="p-1 rounded-full hover:bg-gray-100">
+                              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                            </button>
+                            {commentMenuOpenId === comment.id && (
+                              <div className="absolute right-0 mt-2 w-20 bg-white border border-gray-200 rounded shadow z-10">
+                                <button onClick={() => { handleEditStart(comment); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-blue-50 text-blue-600">수정</button>
+                                <button onClick={() => { handleDeleteComment(comment.id); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-red-50 text-red-500">삭제</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -235,29 +280,45 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   );
 }
 
-function CommunityPostEditModal({ post, isOpen, onClose, onUpdated }) {
+function CommunityPostEditModal({ post, isOpen, onClose, onUpdated, user }) {
   const [content, setContent] = useState(post?.content || '');
-  const [imageUrl, setImageUrl] = useState(post?.imageUrl || '');
-  const [status, setStatus] = useState(post?.status || 'PUBLISHED');
+  const [image, setImage] = useState(post?.imageUrl || '');
+  const [visibility, setVisibility] = useState(post?.status === 'PRIVATE' ? '나만 보기' : '전체 공개');
   const [loading, setLoading] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+
+  const DUMMY_IMAGES = [
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+    "https://images.unsplash.com/photo-1519125323398-675f0ddb6308",
+    "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
+  ];
+
+  const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", "🎉", "😆", "😇", "😺", "🐶", "🌸", "🍀", "🍕", "❤️", "⭐", "😜", "😏"];
 
   useEffect(() => {
     if (isOpen && post) {
       setContent(post.content || '');
-      setImageUrl(post.imageUrl || '');
-      setStatus(post.status || 'PUBLISHED');
+      setImage(post.imageUrl || DUMMY_IMAGES[0]);
+      setVisibility(post.status === 'PRIVATE' ? '나만 보기' : '전체 공개');
     }
   }, [isOpen, post]);
 
+  const handleEmojiSelect = (emoji) => {
+    setContent(content + emoji);
+    setShowEmoji(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!content.trim()) return;
+    
     setLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
       await axios.put(`http://localhost:8083/goods-posts/${post.id}`, {
         content,
-        imageUrl,
-        status
+        imageUrl: image,
+        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
       }, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -273,54 +334,99 @@ function CommunityPostEditModal({ post, isOpen, onClose, onUpdated }) {
     }
   };
 
-  if (!isOpen || !post) return null;
+  if (!isOpen || !post || !user) return null;
+  
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full relative flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fadeIn min-h-screen">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full relative flex flex-col items-center">
         <button
           className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700"
           onClick={onClose}
           aria-label="닫기"
         >×</button>
-        <h2 className="text-xl font-bold mb-4">게시글 수정</h2>
-        <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1">내용</label>
-            <textarea
-              className="w-full border rounded p-2 min-h-[80px]"
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              required
-            />
+        <h2 className="text-lg font-bold mb-4">게시글 수정</h2>
+        {/* 프로필/공개범위/본문 */}
+        <div className="flex items-center w-full mb-3">
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
+            {user?.profileImage ? (
+              <img src={user.profileImage} alt="프로필" className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <span className="text-gray-500 text-xl">👤</span>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1">이미지 URL</label>
-            <input
-              className="w-full border rounded p-2"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder="이미지 URL 입력"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">상태</label>
+            <div className="font-semibold">{user?.name}</div>
             <select
-              className="w-full border rounded p-2"
-              value={status}
-              onChange={e => setStatus(e.target.value)}
+              className="text-xs border rounded px-2 py-1 mt-1"
+              value={visibility}
+              onChange={e => setVisibility(e.target.value)}
             >
-              <option value="ALL">전체 공개</option>
-              <option value="PRIVATE">나만 보기</option>
+              <option>전체 공개</option>
+              <option>나만 보기</option>
             </select>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-300"
-            disabled={loading}
-          >
-            {loading ? '수정 중...' : '수정하기'}
-          </button>
-        </form>
+        </div>
+        <textarea
+          className="w-full border rounded p-3 mb-2 min-h-[80px] resize-none"
+          placeholder="상상공간 게시글 본문"
+          value={content}
+          onChange={e => setContent(e.target.value)}
+        />
+        {/* 이미지 선택 썸네일 */}
+        <div className="w-full flex gap-2 mb-2 justify-center">
+          {DUMMY_IMAGES.map((img, idx) => (
+            <button
+              key={img}
+              type="button"
+              className={`border-2 rounded-lg p-1 ${image === img ? 'border-blue-500' : 'border-transparent'}`}
+              onClick={() => setImage(img)}
+              style={{ background: image === img ? '#e0f2fe' : 'transparent' }}
+            >
+              <img src={img} alt={`굿즈 이미지 ${idx+1}`} className="w-20 h-20 object-cover rounded-md" />
+            </button>
+          ))}
+        </div>
+        {/* 선택된 이미지 미리보기 */}
+        {image && (
+          <div className="relative w-full flex justify-center mb-2">
+            <img src={image} alt="굿즈 이미지" className="max-h-56 rounded-lg object-contain" />
+          </div>
+        )}
+        {/* 이모지 버튼 영역 */}
+        <div className="flex w-full justify-end gap-2 mb-3 relative">
+          <div className="relative">
+            <button
+              type="button"
+              className="flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl relative"
+              onClick={() => setShowEmoji((v) => !v)}
+            >
+              <span role="img" aria-label="이모지">😊</span>
+            </button>
+            {showEmoji && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-5 gap-2 z-10" style={{ width: '220px' }}>
+                {/* 꼬리(삼각형) */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-l border-t border-gray-200 rounded-tl-xl rotate-45 z-[-1]" />
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    className="text-2xl hover:bg-gray-100 rounded p-2 text-center"
+                    onClick={() => handleEmojiSelect(emoji)}
+                    type="button"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mt-2"
+          onClick={handleSubmit}
+          disabled={!content.trim() || loading}
+        >
+          {loading ? '수정 중...' : '수정하기'}
+        </button>
       </div>
     </div>
   );
@@ -340,7 +446,12 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
       post.id === postId ? { ...post, likeLoading: true } : post
     ));
     try {
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`);
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -454,7 +565,7 @@ export default function Community() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   // 굿즈 게시물 등록 모달 state 제거 (content, visibility, image, showEmoji)
   // 추가: 현재 로그인 유저 ID
-  const [userId, setUserId] = useState(null);
+  const [user, setUser] = useState(null); // userId -> user 객체로 변경
 
   // 유저 정보 가져오기
   useEffect(() => {
@@ -464,8 +575,8 @@ export default function Community() {
       headers: { "Authorization": `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(user => setUserId(user.id))
-      .catch(() => setUserId(null));
+      .then(user => setUser(user))
+      .catch(() => setUser(null));
   }, []);
 
   // 게시글 등록 API 연동
@@ -495,10 +606,14 @@ export default function Community() {
       const response = await axios.get('http://localhost:8083/goods-posts');
       const sortedPosts = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       // 각 게시글에 대해 좋아요 상태 체크
-      const userId = 1; // 임시
+      const token = localStorage.getItem("accessToken");
       const postsWithLike = await Promise.all(sortedPosts.map(async (post) => {
         try {
-          const res = await axios.get(`http://localhost:8083/likes/post/${post.id}/check`);
+          const res = await axios.get(`http://localhost:8083/likes/post/${post.id}/check`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
           return { ...post, isLiked: res.data.liked };
         } catch {
           return { ...post, isLiked: false };
@@ -543,7 +658,12 @@ export default function Community() {
       post.id === postId ? { ...post, likeLoading: true } : post
     ));
     try {
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`);
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -658,7 +778,7 @@ export default function Community() {
               onDetail={handleDetail}
               onLikeToggle={() => handleLikeToggle(post.id)}
               onCommentClick={handleCommentClick}
-              userId={userId} // 추가
+              userId={user?.id} // 추가
             />
           ))
         )}
@@ -678,12 +798,14 @@ export default function Community() {
         isOpen={editModalOpen}
         onClose={handleEditModalClose}
         onUpdated={fetchPosts}
+        user={user}
       />
       {/* 굿즈 게시물 등록 모달 (PostUploadModal 사용) */}
       <PostUploadModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onPost={handleCreatePost}
+        user={user} // user prop 전달
       />
       <button
         className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center z-50"

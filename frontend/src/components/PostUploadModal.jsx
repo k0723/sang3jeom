@@ -9,13 +9,12 @@ const DUMMY_IMAGES = [
 ];
 
 export default function PostUploadModal({ open, onClose, image: initialImage, onPost, user }) {
+  if (!open || !user) return null;
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("전체 공개");
   // 이미지 선택: 더미 이미지 중 하나 선택
   const [image, setImage] = useState(initialImage || DUMMY_IMAGES[0]);
   const [showEmoji, setShowEmoji] = useState(false);
-
-  if (!open) return null;
 
   // 더 이상 파일 업로드 핸들러 필요 없음
 
@@ -43,7 +42,7 @@ export default function PostUploadModal({ open, onClose, image: initialImage, on
             )}
           </div>
           <div>
-            <div className="font-semibold">{user?.name || "이주형"}</div>
+            <div className="font-semibold">{user?.name}</div>
             <select
               className="text-xs border rounded px-2 py-1 mt-1"
               value={visibility}

@@ -38,12 +38,20 @@ export default function OrderComplete() {
   // 게시글 업로드 후 커뮤니티로 이동
   const handlePost = async (post) => {
     try {
-      // 테스트용 하드코딩 - 추후 S3 버킷에서 가져올 예정
-      const response = await axios.post("http://localhost:8083/goods-posts", {
-        content: post.content,
-        imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
-        status: "ALL"
-      });
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(
+        "http://localhost:8083/goods-posts",
+        {
+          content: post.content,
+          imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
+          status: "ALL"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       
       console.log("굿즈 게시물 생성 성공:", response.data);
       
@@ -118,7 +126,15 @@ export default function OrderComplete() {
           </div>
         </div>
       </div>
-      <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} user={user} />
+      {/* 모달: 유저 정보가 없으면 로딩, 있으면 모달 */}
+      {showModal && !user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center text-lg font-bold">유저 정보를 불러오는 중...</div>
+        </div>
+      )}
+      {showModal && user && (
+        <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} user={user} />
+      )}
     </div>
   );
 } 
