@@ -373,21 +373,21 @@ const OrderPage = () => {
           {/* 주문상품 */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">
             <h2 className="text-lg font-bold mb-2">주문상품</h2>
-            <div className="flex items-center mb-2">
+            <div className="flex items-start mb-4">
               <img 
                 src={product.image} 
                 alt="상품" 
-                className="w-16 h-16 rounded mr-4" 
+                className="w-32 h-32 rounded-lg mr-6 object-cover border shadow-md" 
                 onLoad={() => console.log("이미지 로드 성공:", product.image)}
                 onError={(e) => {
                   console.error("이미지 로드 실패:", product.image);
                   console.error("이미지 에러:", e);
                 }}
               />
-              <div>
-                <div className="font-semibold">{product.name}</div>
-                <div className="text-sm text-gray-600">{product.desc}</div>
-                <div className="text-xs text-gray-500">수량: {product.option}</div>
+              <div className="flex-1">
+                <div className="font-semibold text-xl">{product.name}</div>
+                <div className="text-base text-gray-600 mt-2">{product.desc}</div>
+                <div className="text-base text-gray-500 mt-3">수량: {product.option}</div>
               </div>
             </div>
             {/* 가격/총금액 레이아웃 */}

@@ -91,14 +91,22 @@ export default function PaySuccess() {
           })
             .then(res => res.json())
             .then(orderData => {
+                // 세션스토리지에서 굿즈 정보 가져오기
+                const savedGoodsId = sessionStorage.getItem("savedGoodsId");
+                const savedGoodsImageUrl = sessionStorage.getItem("savedGoodsImageUrl");
+                
+
+                
                 navigate("/order-complete", {
                   state: {
                     orderId: orderData.orderId || partner_order_id,
                     receiver,
                     phone,
-                  address: addressValue, // 합쳐진 주소 전달
+                    address: addressValue, // 합쳐진 주소 전달
                     email,
-                    amount: amount ? Number(amount) : 0
+                    amount: amount ? Number(amount) : 0,
+                    savedGoodsId,
+                    savedGoodsImageUrl
                   }
                 });
             })
