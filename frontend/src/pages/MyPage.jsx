@@ -283,23 +283,11 @@ const MyPage = ({ setIsLoggedIn }) => {
   const handleUserInfo = async () => {
     try {
       // JWT 토큰 확인 - localStorage에서 가져오기
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken) {
-        console.log("JWT 토큰이 없습니다. 로그인 페이지로 이동합니다.");
-        navigate('/login');
-        return;
-      }
 
-      console.log("토큰 확인:", accessToken);
-      
       const res = await axios.get(
         'http://localhost:8080/users/me',
         { 
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
+          withCredentials: true,
         }
       );
       

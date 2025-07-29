@@ -62,17 +62,30 @@ public class AuthService {
      * 신규 사용자면 회원가입, 기존 사용자면 조회 후 DTO 반환
      */
     @Transactional
-    public UserEntity processOAuthPostLogin(OAuth2User oauthUser) {
-        String email = oauthUser.getAttribute("email");
-        return userRepo.findByEmail(email)
+    public UserEntity processOAuthPostLogin(OAuth2User oauth2User, String provider) {
+        String providerId = oauth2User.getAttribute("id").toString();
+        String email = oauth2User.getAttribute("email");              // 공통 이메일
+        String username = oauth2User.getAttribute("name"); 
+
+        
+        Map<String, Object> attributes = oauth2User.getAttributes();
+        Map<String, Object> account = (Map<String, Object>) attributes.get("kakao_account"); 
+
+        String profileImage = (account != null && account.containsKey("profile"))
+        ? (String) ((Map<String, Object>) account.get("profile")).get("profile_image_url")
+        : oauth2User.getAttribute("picture"); // Google 등 fallbackc
+
+        return userRepo.findByProviderAndProviderId(provider, providerId)
                 .orElseGet(() -> {
                     UserEntity newUser = UserEntity.builder()
+                            .provider(provider)
+                            .providerId(providerId)
                             .email(email)
-                            .username(oauthUser.getAttribute("name"))
-                            .name(oauthUser.getAttribute("name"))
+                            .username(oauth2User.getAttribute("name"))
+                            .name(oauth2User.getAttribute("name"))
                             .passwordHash("")
                             .roles(false)
-                            .profileImageUrl(oauthUser.getAttribute("picture"))
+                            .profileImageUrl(profileImage)
                             .build();
                     log.info("New OAuth2 user registered: {}", email);
                     return userRepo.save(newUser);

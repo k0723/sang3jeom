@@ -5,22 +5,40 @@ import axios from 'axios';
 
 const OAuth2RedirectHandler = ({ setIsLoggedIn }) => {           // :contentReference[oaicite:0]{index=0}
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+ useEffect(() => {
+    (async () => {
+      try {
+        // 1️⃣ URL에서 accessToken 먼저 읽기
+        const token = searchParams.get("accessToken");
+        console.log("🔹 URL에서 받은 accessToken:", token);
 
-  useEffect(() => {
-      (async () => {
-        try {
-          const { data } = await axios.get('http://localhost:8080/users/me', {
-            withCredentials: true, // ★ 쿠키 전송
-          });
-          // 성공 시
-          setIsLoggedIn(true);
-          // 사용자 정보 전역 저장도 여기서
-          navigate('/', { replace: true });
-        } catch (e) {
-          navigate('/login?error=oauth', { replace: true });
+        if (token) {
+          // 2️⃣ local/sessionStorage에 저장
+          localStorage.setItem('accessToken', token);
+          sessionStorage.setItem('accessToken', token);
         }
-      })();
-    }, [navigate, setIsLoggedIn]);
+
+        // 3️⃣ 서버에 사용자 정보 요청 (쿠키 + 토큰 둘 다 가능)
+        const { data } = await axios.get('http://localhost:8080/users/me', {
+          withCredentials: true, // HttpOnly 쿠키 전송
+          headers: {
+            Authorization: `Bearer ${token}`, // ★ 백엔드에서 허용하면 헤더로도 보냄
+          },
+        });
+
+        console.log("🔹 사용자 정보:", data);
+        localStorage.setItem('isLoggedIn', 'true');
+        setIsLoggedIn(true);
+
+        // 4️⃣ 홈으로 이동
+        navigate('/', { replace: true });
+      } catch (e) {
+        console.error("OAuth2RedirectHandler 에러:", e);
+        navigate('/login?error=oauth', { replace: true });
+      }
+    })();
+  }, [navigate, searchParams, setIsLoggedIn]);
 
   return null;
 };
