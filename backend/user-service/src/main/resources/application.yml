@@ -62,6 +62,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS}
   access-expiry-ms: 900000       # 15분
   refresh-expiry-ms: 1209600000  # 14일
 

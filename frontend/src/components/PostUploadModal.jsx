@@ -2,24 +2,21 @@ import React, { useState } from "react";
 
 const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", "🎉", "😆", "😇", "😺", "🐶", "🌸", "🍀", "🍕", "❤️", "⭐", "😜", "😏"];
 
-export default function PostUploadModal({ open, onClose, image: initialImage, onPost }) {
+const DUMMY_IMAGES = [
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+  "https://images.unsplash.com/photo-1519125323398-675f0ddb6308",
+  "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
+];
+
+export default function PostUploadModal({ open, onClose, image: initialImage, onPost, user }) {
+  if (!open || !user) return null;
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("전체 공개");
-  // 테스트용 하드코딩 이미지 URL - 추후 S3 버킷에서 가져올 예정
-  const [image, setImage] = useState(initialImage || "https://placehold.co/600x400");
+  // 이미지 선택: 더미 이미지 중 하나 선택
+  const [image, setImage] = useState(initialImage || DUMMY_IMAGES[0]);
   const [showEmoji, setShowEmoji] = useState(false);
 
-  if (!open) return null;
-
-  // 파일 업로드 핸들러(샘플, 실제 업로드는 별도 구현 필요)
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setImage(ev.target.result);
-      reader.readAsDataURL(file);
-    }
-  };
+  // 더 이상 파일 업로드 핸들러 필요 없음
 
   const handleEmojiSelect = (emoji) => {
     setContent(content + emoji);
@@ -37,11 +34,15 @@ export default function PostUploadModal({ open, onClose, image: initialImage, on
         <h2 className="text-lg font-bold mb-4">굿즈 게시물 만들기</h2>
         {/* 프로필/공개범위/본문 */}
         <div className="flex items-center w-full mb-3">
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-            <span className="text-gray-500 text-xl">👤</span>
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
+            {user?.profileImage ? (
+              <img src={user.profileImage} alt="프로필" className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <span className="text-gray-500 text-xl">👤</span>
+            )}
           </div>
           <div>
-            <div className="font-semibold">이주형</div>
+            <div className="font-semibold">{user?.name}</div>
             <select
               className="text-xs border rounded px-2 py-1 mt-1"
               value={visibility}
@@ -58,23 +59,28 @@ export default function PostUploadModal({ open, onClose, image: initialImage, on
           value={content}
           onChange={e => setContent(e.target.value)}
         />
-        {/* 첨부 이미지 */}
+        {/* 이미지 선택 썸네일 */}
+        <div className="w-full flex gap-2 mb-2 justify-center">
+          {DUMMY_IMAGES.map((img, idx) => (
+            <button
+              key={img}
+              type="button"
+              className={`border-2 rounded-lg p-1 ${image === img ? 'border-blue-500' : 'border-transparent'}`}
+              onClick={() => setImage(img)}
+              style={{ background: image === img ? '#e0f2fe' : 'transparent' }}
+            >
+              <img src={img} alt={`굿즈 이미지 ${idx+1}`} className="w-20 h-20 object-cover rounded-md" />
+            </button>
+          ))}
+        </div>
+        {/* 선택된 이미지 미리보기 */}
         {image && (
           <div className="relative w-full flex justify-center mb-2">
             <img src={image} alt="굿즈 이미지" className="max-h-56 rounded-lg object-contain" />
-            <button
-              className="absolute top-2 right-2 bg-white/80 rounded-full p-1 text-xl text-gray-500 hover:text-red-500"
-              onClick={() => setImage(null)}
-              aria-label="이미지 삭제"
-            >×</button>
           </div>
         )}
-        {/* 사진/이모지 버튼 영역 */}
+        {/* 이모지 버튼 영역 */}
         <div className="flex w-full justify-end gap-2 mb-3 relative">
-          <label className="cursor-pointer flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl">
-            <span role="img" aria-label="사진">🖼️</span>
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          </label>
           <div className="relative">
             <button
               type="button"
