@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 import axios from 'axios';
 import { 
   User, 
@@ -41,32 +42,14 @@ const MyPage = ({ setIsLoggedIn }) => {
 
   const [aiImages, setAiImages] = useState([]);
   const [myGoods, setMyGoods] = useState([]);
-
-  // 임시 사용자 데이터
-
-  const orders = [
-    {
-      id: 'ORD001',
-      date: '2024.01.20',
-      status: '배송완료',
-      items: ['AI 캐릭터 머그컵', 'AI 캐릭터 스티커'],
-      total: 25000
-    },
-    {
-      id: 'ORD002',
-      date: '2024.01.18',
-      status: '제작중',
-      items: ['AI 캐릭터 티셔츠'],
-      total: 15000
-    },
-    {
-      id: 'ORD003',
-      date: '2024.01.15',
-      status: '배송중',
-      items: ['AI 캐릭터 키링'],
-      total: 8000
-    }
-  ];
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStats, setOrderStats] = useState({
+    totalOrders: 0,
+    totalSpent: 0
+  });
+  const [myPosts, setMyPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // 굿즈 타입별 가격 정보
   const goodsPrices = {
@@ -84,35 +67,218 @@ const MyPage = ({ setIsLoggedIn }) => {
     'case': 'AI 캐릭터 폰케이스'
   };
 
+  // 주문내역에서 상품명을 한글로 변환하는 함수
+  const getGoodsDisplayName = (goodsName) => {
+    if (!goodsName) return '상품명 없음';
+    
+    const lowerGoodsName = goodsName.toLowerCase();
+    
+    // goodsNames 객체에서 매칭되는 한글 이름 찾기
+    for (const [key, value] of Object.entries(goodsNames)) {
+      if (lowerGoodsName === key || lowerGoodsName.includes(key)) {
+        return value;
+      }
+    }
+    
+    // 매칭되지 않으면 원래 이름 반환
+    return goodsName;
+  };
+
   const tabs = [
     { id: 'profile', name: '프로필', icon: User },
     { id: 'orders', name: '주문내역', icon: ShoppingBag },
-    { id: 'ai', name: 'AI 캐릭터', icon: Star }, // AI 캐릭터 탭 추가
-    { id: 'favorites', name: '찜한 상품', icon: Heart },
+    { id: 'ai', name: 'AI 캐릭터', icon: Star },
+    { id: 'favorites', name: '내 굿즈', icon: Heart },
+    { id: 'posts', name: '내가 쓴 글', icon: Edit }, // 내가 쓴 글 탭 추가
     { id: 'settings', name: '설정', icon: Settings }
   ];
 
   const getStatusColor = (status) => {
     switch (status) {
-      case '배송완료': return 'text-green-600 bg-green-100';
-      case '배송중': return 'text-blue-600 bg-blue-100';
-      case '제작중': return 'text-yellow-600 bg-yellow-100';
+      case 'COMPLETED': return 'text-green-600 bg-green-100';
+      case 'SHIPPING': return 'text-blue-600 bg-blue-100';
+      case 'PENDING': return 'text-yellow-600 bg-yellow-100';
       default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'COMPLETED': return '배송완료';
+      case 'SHIPPING': return '배송중';
+      case 'PENDING': return '제작중';
+      default: return status;
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case '배송완료': return CheckCircle;
-      case '배송중': return Truck;
-      case '제작중': return Package;
+      case 'COMPLETED': return CheckCircle;
+      case 'SHIPPING': return Truck;
+      case 'PENDING': return Package;
       default: return Package;
+    }
+  };
+
+  // 주문 통계 가져오기
+  const fetchOrderStats = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        console.log("JWT 토큰이 없습니다. 주문 통계를 불러올 수 없습니다.");
+        return;
+      }
+
+      const response = await axios.get('http://localhost:8082/orders/my-stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log("주문 통계:", response.data);
+      setOrderStats(response.data);
+    } catch (error) {
+      console.error("주문 통계 불러오기 실패:", error);
+      if (error.response?.status === 401) {
+        console.log("인증 실패 - 로그인 페이지로 이동");
+        navigate('/login');
+      }
+    }
+  };
+
+  // 내가 쓴 글 가져오기
+  const fetchMyPosts = async () => {
+    try {
+      setPostsLoading(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        console.log("JWT 토큰이 없습니다. 내가 쓴 글을 불러올 수 없습니다.");
+        return;
+      }
+
+      const response = await axios.get('http://localhost:8083/goods-posts/my-posts', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log("내가 쓴 글:", response.data);
+      setMyPosts(response.data);
+    } catch (error) {
+      console.error("내가 쓴 글 불러오기 실패:", error);
+      if (error.response?.status === 401) {
+        console.log("인증 실패 - 로그인 페이지로 이동");
+        navigate('/login');
+      }
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  // 굿즈 가져오기
+  const fetchGoods = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      console.log("JWT 토큰이 없습니다. 굿즈를 불러올 수 없습니다.");
+      return;
+    }
+    
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      console.log("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    
+    try {
+      console.log("굿즈 조회 API 호출 - userId:", userId);
+      const res = await fetch(`http://localhost:8080/api/user-goods?userId=${userId}`, {
+        headers: { 
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log("굿즈 조회 API 응답 상태:", res.status);
+      
+                        if (res.ok) {
+                    const data = await res.json();
+                    console.log("굿즈 데이터:", data);
+                    console.log("굿즈 개수:", data.length);
+                    
+                    // 각 굿즈의 상세 정보 로깅
+                    data.forEach((goods, index) => {
+                      console.log(`굿즈 ${index + 1}:`, {
+                        id: goods.id,
+                        goodsType: goods.goodsType,
+                        imageUrl: goods.imageUrl,
+                        createdAt: goods.createdAt,
+                        userId: goods.userId,
+                        userName: goods.userName
+                      });
+                    });
+                    
+                    setMyGoods(data);
+                  } else {
+                    console.error("굿즈 불러오기 실패:", res.status);
+                    const errorText = await res.text();
+                    console.error("에러 내용:", errorText);
+                  }
+    } catch (error) {
+      console.error("굿즈 불러오기 오류:", error);
+    }
+  };
+
+  // 주문내역 가져오기
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        console.log("JWT 토큰이 없습니다. 주문내역을 불러올 수 없습니다.");
+        return;
+      }
+
+      const response = await axios.get('http://localhost:8082/orders/my-orders', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log("주문내역:", response.data);
+      setOrders(response.data);
+    } catch (error) {
+      console.error("주문내역 불러오기 실패:", error);
+      if (error.response?.status === 401) {
+        console.log("인증 실패 - 로그인 페이지로 이동");
+        navigate('/login');
+      }
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
   useEffect(() => {
     handleUserInfo();
+    fetchOrderStats(); // 주문 통계도 함께 가져오기
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'orders' && user) {
+      fetchOrders();
+    }
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (activeTab === 'posts' && user) {
+      fetchMyPosts();
+    }
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (activeTab === 'favorites' && user) {
+      fetchGoods();
+    }
+  }, [activeTab, user]);
 
   const handleUserInfo = async () => {
     try {
@@ -137,6 +303,7 @@ const MyPage = ({ setIsLoggedIn }) => {
       }
     } catch (err) {
       console.error("사용자 정보 조회 실패:", err);
+      console.error("에러 응답:", err.response);
       if (err.response?.status === 401) {
         alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
         navigate('/login');
@@ -241,6 +408,76 @@ const MyPage = ({ setIsLoggedIn }) => {
     }
   };
 
+  // 내가 쓴 글 삭제 함수
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('정말로 이 글을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        alert("JWT 토큰이 없습니다.");
+        return;
+      }
+
+      const response = await axios.delete(`http://localhost:8083/goods-posts/${postId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        alert('글이 성공적으로 삭제되었습니다.');
+        // 글 목록에서 삭제된 글 제거
+        setMyPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+      }
+    } catch (error) {
+      console.error("글 삭제 오류:", error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 굿즈 삭제 함수
+  const handleDeleteGoods = async (goodsId) => {
+    if (!window.confirm('정말로 이 굿즈를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("JWT 토큰이 없습니다.");
+        return;
+      }
+
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        alert("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8080/api/user-goods/${goodsId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (response.ok) {
+        alert('굿즈가 성공적으로 삭제되었습니다.');
+        // 굿즈 목록에서 삭제된 굿즈 제거
+        setMyGoods(prevGoods => prevGoods.filter(goods => goods.id !== goodsId));
+      } else {
+        const errorData = await response.json();
+        alert('삭제 실패: ' + (errorData.message || '알 수 없는 오류가 발생했습니다.'));
+      }
+    } catch (error) {
+      console.error("굿즈 삭제 오류:", error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // AI 이미지 삭제 함수
   const handleDeleteAiImage = async (imageId) => {
     if (!window.confirm('정말로 이 AI 캐릭터를 삭제하시겠습니까?')) {
@@ -254,11 +491,15 @@ const MyPage = ({ setIsLoggedIn }) => {
         return;
       }
 
-      const userId = user?.id || 1;
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        alert("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
       console.log("AI 이미지 삭제:", { imageId, userId });
 
       // 방법 1: 쿼리 파라미터로 userId 전송
-      const res = await fetch(`/api/ai-images/${imageId}?userId=${userId}`, {
+      const res = await fetch(`http://localhost:8080/api/ai-images/${imageId}?userId=${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -272,7 +513,7 @@ const MyPage = ({ setIsLoggedIn }) => {
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await fetch(`/api/ai-images/${imageId}`, {
+        const res2 = await fetch(`http://localhost:8080/api/ai-images/${imageId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -306,10 +547,14 @@ const MyPage = ({ setIsLoggedIn }) => {
             return;
           }
 
-          const userId = user?.id || 1;
+          const userId = getUserIdFromToken();
+          if (!userId) {
+            console.log("유저 정보를 확인할 수 없습니다.");
+            return;
+          }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await fetch(`/api/ai-images/user/${userId}`, {
+          const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
             headers: { 
               "Authorization": `Bearer ${accessToken}`,
               "Content-Type": "application/json"
@@ -336,18 +581,9 @@ const MyPage = ({ setIsLoggedIn }) => {
   }, [activeTab, user, navigate]);
 
   useEffect(() => {
-    const fetchGoods = async () => {
-      const accessToken = localStorage.getItem("accessToken");
-      const userId = user?.id || 1;
-      const res = await fetch(`/api/user-goods?userId=${userId}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMyGoods(data);
-      }
-    };
-    fetchGoods();
+    if (user) {
+      fetchGoods();
+    }
   }, [user]);
 
 
@@ -394,12 +630,12 @@ const MyPage = ({ setIsLoggedIn }) => {
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-blue-600">{user?.totalOrders || 0}</div>
+                  <div className="text-lg font-bold text-blue-600">{orderStats.totalOrders}</div>
                   <div className="text-xs text-gray-600">총 주문</div>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-lg font-bold text-green-600">
-                    {(user?.totalSpent || 0).toLocaleString()}원
+                    {orderStats.totalSpent.toLocaleString()}원
                   </div>
                   <div className="text-xs text-gray-600">총 결제</div>
                 </div>
@@ -523,40 +759,57 @@ const MyPage = ({ setIsLoggedIn }) => {
               {activeTab === 'orders' && (
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <h2 className="text-2xl font-bold text-gray-800 mb-6">주문내역</h2>
-                  <div className="space-y-4">
-                    {orders.map((order) => {
-                      const StatusIcon = getStatusIcon(order.status);
-                      return (
-                        <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h3 className="font-semibold text-gray-800">주문번호: {order.id}</h3>
-                              <p className="text-sm text-gray-600">{order.date}</p>
-                            </div>
-                            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                              <StatusIcon className="w-4 h-4" />
-                              <span>{order.status}</span>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            {order.items.map((item, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                <span className="text-gray-700">{item}</span>
+                  {ordersLoading ? (
+                    <div className="text-center py-12">로딩 중...</div>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-500 mb-4">주문 내역이 없습니다.</div>
+                      <Link 
+                        to="/goods-maker" 
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        굿즈 제작하기
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map((order) => {
+                        const StatusIcon = getStatusIcon(order.status);
+                        return (
+                          <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-800">주문번호: ORD00{order.id}</h3>
+                                <p className="text-sm text-gray-600">
+                                  {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : '날짜 없음'}
+                                </p>
                               </div>
-                            ))}
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">총 결제금액</span>
-                                {(order.total?.toLocaleString() ?? '0')}원
-                              <span className="font-semibold text-gray-800"></span>
+                              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                                <StatusIcon className="w-4 h-4" />
+                                <span>{getStatusText(order.status)}</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                <span className="text-gray-700">
+                                  {getGoodsDisplayName(order.goodsName)} (수량: {order.quantity}개)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">총 결제금액</span>
+                                <span className="font-semibold text-gray-800">
+                                  {(order.price)?.toLocaleString() ?? '0'}원
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -582,7 +835,18 @@ const MyPage = ({ setIsLoggedIn }) => {
                             src={goods.imageUrl} 
                             alt={goodsNames[goods.goodsType] || goods.goodsType} 
                             className="w-full h-48 object-cover"
+                            onError={(e) => {
+                              console.error("이미지 로드 실패:", goods.imageUrl);
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
                           />
+                          <div 
+                            className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500 text-sm"
+                            style={{ display: 'none' }}
+                          >
+                            이미지를 불러올 수 없습니다
+                          </div>
                           <div className="p-4">
                             <h3 className="font-semibold text-gray-800 mb-2">
                               {goodsNames[goods.goodsType] || goods.goodsType}
@@ -602,7 +866,7 @@ const MyPage = ({ setIsLoggedIn }) => {
                               </button>
                             </div>
                             <div className="mt-2 text-xs text-gray-500">
-                              {new Date(goods.createdAt).toLocaleDateString()}
+                              {goods.createdAt ? new Date(goods.createdAt).toLocaleDateString('ko-KR') : '날짜 정보 없음'}
                             </div>
                           </div>
                         </div>
@@ -653,6 +917,68 @@ const MyPage = ({ setIsLoggedIn }) => {
                             <span className="text-xs text-gray-500">
                               {new Date(img.createdAt).toLocaleDateString()}
                             </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 내가 쓴 글 Tab */}
+              {activeTab === 'posts' && (
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">내가 쓴 글</h2>
+                  {postsLoading ? (
+                    <div className="text-center py-12">로딩 중...</div>
+                  ) : myPosts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-500 mb-4">작성한 글이 없습니다.</div>
+                      <Link 
+                        to="/community" 
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        커뮤니티 가기
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {myPosts.map((post) => (
+                        <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-800 mb-1">
+                                {post.content && post.content.length > 50 
+                                  ? post.content.substring(0, 50) + '...' 
+                                  : post.content}
+                              </h3>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
+                              <button
+                                onClick={() => navigate(`/community/post/${post.id}`)}
+                                className="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+                              >
+                                보기
+                              </button>
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center space-x-4">
+                              <span>작성일: {new Date(post.createdAt).toLocaleDateString()}</span>
+                              <span>댓글: {post.commentCount || 0}</span>
+                              <span>좋아요: {post.likeCount || 0}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                                {post.status === 'PRIVATE' ? '나만보기' : '전체보기'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}

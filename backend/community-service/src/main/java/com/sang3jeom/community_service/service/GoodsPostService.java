@@ -64,7 +64,13 @@ public class GoodsPostService {
 
     public List<GoodsPostDTO> getGoodsPostsByUserId(Long userId) {
         return goodsPostRepository.findByUserId(userId).stream()
-                .map(this::convertToDTO)
+                .map(goodsPost -> {
+                    GoodsPostDTO dto = convertToDTO(goodsPost);
+                    // 댓글 수와 좋아요 수 추가
+                    dto.setCommentCount((long) commentService.getCommentsByPostId(goodsPost.getId()).size());
+                    dto.setLikeCount(likeService.getLikeCount(goodsPost.getId()));
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -75,7 +81,13 @@ public class GoodsPostService {
         if (imageUrl != null) goodsPost.setImageUrl(imageUrl);
         if (status != null) goodsPost.setStatus(status);
         GoodsPost updatedPost = goodsPostRepository.save(goodsPost);
-        return convertToDTO(updatedPost);
+        
+        GoodsPostDTO dto = convertToDTO(updatedPost);
+        // 댓글 수와 좋아요 수 추가
+        dto.setCommentCount((long) commentService.getCommentsByPostId(id).size());
+        dto.setLikeCount(likeService.getLikeCount(id));
+        
+        return dto;
     }
 
     public void deleteGoodsPost(Long id) {

@@ -90,10 +90,29 @@ async def generate_character(
     with open(image_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
 
-    # S3에 업로드
-    image_url = upload_to_s3(image_path, filename)
+    # 임시로 S3에 업로드 (AI 서비스가 접근할 수 있도록)
+    temp_image_url = upload_to_s3(image_path, f"temp/{filename}")
     prompt = f"make the pet look like a cute {style} character"
-    result_url = call_replicate_flux_kontext(image_url, prompt)
+    result_url = call_replicate_flux_kontext(temp_image_url, prompt)
+
+    # 임시 S3 파일 삭제
+    try:
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY,
+            region_name=S3_REGION,
+        )
+        s3.delete_object(Bucket=S3_BUCKET, Key=f"temp/{filename}")
+        print(f"임시 S3 파일 삭제 완료: temp/{filename}")
+    except Exception as e:
+        print(f"임시 S3 파일 삭제 실패: {e}")
+
+    # 로컬 파일 삭제
+    try:
+        os.remove(image_path)
+    except:
+        pass
 
     return JSONResponse({
         "result_url": str(result_url)
