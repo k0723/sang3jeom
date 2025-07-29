@@ -790,7 +790,10 @@ export default function GoodsMaker() {
         body: formData
       });
       if (res.ok) {
+        const savedGoods = await res.json();
         alert('굿즈가 저장되었습니다!');
+        console.log('저장된 굿즈:', savedGoods);
+        // 굿즈 저장 완료 후 현재 페이지에 머무름
       } else {
         const err = await res.json();
         alert('굿즈 저장 실패: ' + (err.message || '오류'));
