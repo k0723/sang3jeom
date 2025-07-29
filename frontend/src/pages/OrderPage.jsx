@@ -8,6 +8,13 @@ import { getUserIdFromToken } from '../utils/jwtUtils';
 const OrderPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // GoodsMaker에서 전달하는 product 객체 확인
+  const productData = location.state?.product;
+  
+  console.log("OrderPage에서 받은 location.state:", location.state);
+  console.log("OrderPage에서 받은 productData:", productData);
+  
   const {
     label,
     description,
@@ -20,7 +27,17 @@ const OrderPage = () => {
 
   const totalPrice = price ? parseInt(price.toString().replace(/[^0-9]/g, "")) : 12900;
   const unitPrice = quantity ? Math.round(totalPrice / quantity) : totalPrice;
-  const product = {
+  
+  // GoodsMaker에서 전달한 product 데이터가 있으면 사용, 없으면 기본값 사용
+  const product = productData ? {
+    name: productData.name,
+    desc: productData.desc,
+    option: productData.option,
+    price: productData.price,
+    image: productData.image,
+    quantity: productData.quantity,
+    features: productData.features || []
+  } : {
     name: label || "에이센트ASCENT",
     desc: description || "에이센트 대용량 디퓨저 500ml 실내방향제 집들이선물 그린에어리 인테리어",
     option: quantity ? ` ${quantity}개` : "수량: 1개",
@@ -29,6 +46,8 @@ const OrderPage = () => {
     quantity: quantity || 1,
     features: features || []
   };
+  
+  console.log("OrderPage에서 사용할 product:", product);
   // user 객체를 state로 관리
   const [userInfo, setUserInfo] = useState({
     name: "이주형",
@@ -355,7 +374,16 @@ const OrderPage = () => {
           <div className="bg-white rounded-lg shadow p-4 mb-6">
             <h2 className="text-lg font-bold mb-2">주문상품</h2>
             <div className="flex items-center mb-2">
-              <img src={product.image} alt="상품" className="w-16 h-16 rounded mr-4" />
+              <img 
+                src={product.image} 
+                alt="상품" 
+                className="w-16 h-16 rounded mr-4" 
+                onLoad={() => console.log("이미지 로드 성공:", product.image)}
+                onError={(e) => {
+                  console.error("이미지 로드 실패:", product.image);
+                  console.error("이미지 에러:", e);
+                }}
+              />
               <div>
                 <div className="font-semibold">{product.name}</div>
                 <div className="text-sm text-gray-600">{product.desc}</div>

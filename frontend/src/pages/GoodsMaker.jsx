@@ -158,6 +158,8 @@ export default function GoodsMaker() {
   const navigate = useNavigate();
   const fileInputRef = useRef();
   const [aiImages, setAiImages] = useState([]);
+  const [savedGoods, setSavedGoods] = useState(null); // 저장된 굿즈 정보
+  const [isSaved, setIsSaved] = useState(false); // 굿즈 저장 여부
   const [selectedImage, setSelectedImage] = useState(null);
   const abortControllerRef = useRef(null); // 이미지 로딩 중단용
 
@@ -237,6 +239,12 @@ export default function GoodsMaker() {
     };
     fetchImages();
   }, []);
+
+  // 굿즈 타입이나 수량이 변경되면 저장 상태 초기화
+  useEffect(() => {
+    setIsSaved(false);
+    setSavedGoods(null);
+  }, [selected.key, quantity]);
 
   // 통합된 캔버스 렌더링 useEffect
   useEffect(() => {
@@ -666,6 +674,12 @@ export default function GoodsMaker() {
 
   // 결제창 띄우기 함수
   const handleOrder = () => {
+    // 굿즈가 저장되었는지 확인
+    if (!isSaved || !savedGoods) {
+      alert("굿즈를 먼저 저장해주세요! '저장하기' 버튼을 클릭하여 굿즈를 저장한 후 주문할 수 있습니다.");
+      return;
+    }
+
     // goodsId와 goodsName 매핑
     const getGoodsIdAndName = (goodsKey) => {
       switch (goodsKey) {
@@ -684,7 +698,8 @@ export default function GoodsMaker() {
       selectedKey: selected.key,
       goodsId: goodsId,
       goodsName: goodsName,
-      quantity: quantity
+      quantity: quantity,
+      savedGoods: savedGoods
     });
     
     // sessionStorage에 goodsId와 goodsName 저장
@@ -697,14 +712,20 @@ export default function GoodsMaker() {
       savedGoodsName: sessionStorage.getItem("goods_name")
     });
 
-    navigate("/order", { state: { product: {
+    // 저장된 굿즈의 이미지 URL 사용
+    const productData = {
       name: selected.label,
       desc: selected.description,
       option: `${quantity}개`,
       price: parseInt(selected.price.replace(/[^0-9]/g, '')),
-      image: uploadedImg || aiImg || selected.img,
+      image: savedGoods.imageUrl, // 저장된 굿즈의 S3 이미지 URL 사용
       quantity: quantity,
-    } } });
+      savedGoodsId: savedGoods.id // 저장된 굿즈 ID 추가
+    };
+    
+    console.log("OrderPage로 전달하는 데이터 (저장된 굿즈 사용):", productData);
+    
+    navigate("/order", { state: { product: productData } });
   };
 
   // 장바구니 추가 함수
@@ -790,9 +811,14 @@ export default function GoodsMaker() {
         body: formData
       });
       if (res.ok) {
-        const savedGoods = await res.json();
+        const savedGoodsData = await res.json();
         alert('굿즈가 저장되었습니다!');
-        console.log('저장된 굿즈:', savedGoods);
+        console.log('저장된 굿즈:', savedGoodsData);
+        
+        // 저장된 굿즈 정보 상태 업데이트
+        setSavedGoods(savedGoodsData);
+        setIsSaved(true);
+        
         // 굿즈 저장 완료 후 현재 페이지에 머무름
       } else {
         const err = await res.json();
@@ -887,24 +913,18 @@ export default function GoodsMaker() {
               {/* CTA Buttons */}
               <div className="space-y-3">
                 <motion.button
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  // onClick={handleOrder}
-                  onClick={() => navigate('/order', {
-                    state: {
-                      quantity,
-                      label: selected.label,
-                      description: selected.description,
-                      img: selected.img,
-                      price: calculatePrice(),
-                      minQuantity: selected.minQuantity,
-                      features: selected.features
-                    }
-                  })}
+                  className={`w-full py-3 rounded-lg font-semibold transition-colors duration-300 ${
+                    isSaved 
+                      ? "bg-blue-600 text-white hover:bg-blue-700" 
+                      : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  }`}
+                  whileHover={{ scale: isSaved ? 1.02 : 1 }}
+                  whileTap={{ scale: isSaved ? 0.98 : 1 }}
+                  onClick={handleOrder}
+                  disabled={!isSaved}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
-                  주문하기
+                  {isSaved ? "주문하기" : "굿즈를 먼저 저장해주세요"}
                 </motion.button>
                 <motion.button
                   className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
