@@ -32,6 +32,10 @@ public class Order {
     private long price;        // 가격
     private int quantity;      // 수량
 
+    // 추가: 굿즈 정보
+    private Long goodsId;    // 굿즈 ID
+    private String goodsName;  // 굿즈 이름
+
     @PrePersist
     public void prePersist() {
         this.orderDate = LocalDateTime.now();

@@ -3,10 +3,18 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import Modal from "../components/Modal";
+import { getUserIdFromToken } from '../utils/jwtUtils';
 
 const OrderPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // GoodsMaker에서 전달하는 product 객체 확인
+  const productData = location.state?.product;
+  
+  console.log("OrderPage에서 받은 location.state:", location.state);
+  console.log("OrderPage에서 받은 productData:", productData);
+  
   const {
     label,
     description,
@@ -19,7 +27,17 @@ const OrderPage = () => {
 
   const totalPrice = price ? parseInt(price.toString().replace(/[^0-9]/g, "")) : 12900;
   const unitPrice = quantity ? Math.round(totalPrice / quantity) : totalPrice;
-  const product = {
+  
+  // GoodsMaker에서 전달한 product 데이터가 있으면 사용, 없으면 기본값 사용
+  const product = productData ? {
+    name: productData.name,
+    desc: productData.desc,
+    option: productData.option,
+    price: productData.price,
+    image: productData.image,
+    quantity: productData.quantity,
+    features: productData.features || []
+  } : {
     name: label || "에이센트ASCENT",
     desc: description || "에이센트 대용량 디퓨저 500ml 실내방향제 집들이선물 그린에어리 인테리어",
     option: quantity ? ` ${quantity}개` : "수량: 1개",
@@ -28,6 +46,8 @@ const OrderPage = () => {
     quantity: quantity || 1,
     features: features || []
   };
+  
+  console.log("OrderPage에서 사용할 product:", product);
   // user 객체를 state로 관리
   const [userInfo, setUserInfo] = useState({
     name: "이주형",
@@ -125,9 +145,42 @@ const OrderPage = () => {
     sessionStorage.setItem("phone", phone);
     sessionStorage.setItem("amount", product.price.toString());
     sessionStorage.setItem("quantity", product.quantity.toString()); // 수량 저장
+    
+    // 상품 정보에 따른 goodsId와 goodsName 설정
+    let goodsId = "1";
+    let goodsName = "AI 캐릭터 상품";
+    
+    // 상품 이름에 따라 goodsId와 goodsName 설정
+    if (product.name.toLowerCase().includes("머그컵") || product.name.toLowerCase().includes("mug")) {
+      goodsId = "1";
+      goodsName = "mug";
+    } else if (product.name.toLowerCase().includes("티셔츠") || product.name.toLowerCase().includes("t-shirt")) {
+      goodsId = "2";
+      goodsName = "tshirt";
+    } else if (product.name.toLowerCase().includes("에코백") || product.name.toLowerCase().includes("eco bag")) {
+      goodsId = "3";
+      goodsName = "echobag";
+    } else if (product.name.toLowerCase().includes("케이스") || product.name.toLowerCase().includes("case")) {
+      goodsId = "4";
+      goodsName = "case";
+    }
+    
+    // sessionStorage에 상품 정보 저장
+    sessionStorage.setItem("goods_id", goodsId);
+    sessionStorage.setItem("goods_name", goodsName);
+    
+    console.log("OrderPage - 상품 정보 저장:", {
+      goodsId,
+      goodsName,
+      productName: product.name
+    });
+    // JWT 토큰에서 userId 추출
+    const accessToken = localStorage.getItem("accessToken");
+    const userId = getUserIdFromToken();
+    
     const requestBody = {
       partnerOrderId: `ORDER_${Date.now()}`,
-      partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체
+      partnerUserId: `USER_${userId || 1}`, // 실제 로그인 유저ID 사용
       itemName: product.name,
       quantity: product.quantity || 1,
       totalAmount: product.price, // 총금액만 사용
@@ -321,7 +374,16 @@ const OrderPage = () => {
           <div className="bg-white rounded-lg shadow p-4 mb-6">
             <h2 className="text-lg font-bold mb-2">주문상품</h2>
             <div className="flex items-center mb-2">
-              <img src={product.image} alt="상품" className="w-16 h-16 rounded mr-4" />
+              <img 
+                src={product.image} 
+                alt="상품" 
+                className="w-16 h-16 rounded mr-4" 
+                onLoad={() => console.log("이미지 로드 성공:", product.image)}
+                onError={(e) => {
+                  console.error("이미지 로드 실패:", product.image);
+                  console.error("이미지 에러:", e);
+                }}
+              />
               <div>
                 <div className="font-semibold">{product.name}</div>
                 <div className="text-sm text-gray-600">{product.desc}</div>

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 import { 
   Upload, 
   Download, 
@@ -21,22 +22,7 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-// JWT에서 userId 추출 함수 추가
-function parseJwt(token) {
-  try {
-    const base64Payload = token.split('.')[1];
-    const jsonPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(decodeURIComponent(
-      jsonPayload
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    ));
-  } catch (e) {
-    console.error('Invalid JWT:', e);
-    return null;
-  }
-}
+
 
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
@@ -71,8 +57,14 @@ export default function CharacterMaker({ onDone }) {
         return;
       }
 
-      const userId = 1; // 임시로 고정
-      const res = await fetch(`/api/ai-images/user/${userId}`, {
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        console.log("유저 정보를 확인할 수 없습니다.");
+        setIsCheckingImageCount(false);
+        return;
+      }
+      
+      const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
         headers: { 
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json"
@@ -206,13 +198,17 @@ export default function CharacterMaker({ onDone }) {
   };
 
   const handleSaveImage = async () => {
-    // 임시로 userId를 1로 고정
-    const userId = 1;
-    
-    // JWT 토큰 확인 - localStorage에서 가져오기
+    // JWT 토큰에서 userId 추출
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       alert("로그인이 필요합니다.");
+      return;
+    }
+    
+    // JWT 토큰에서 userId 추출
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      alert("유저 정보를 확인할 수 없습니다.");
       return;
     }
     
@@ -238,7 +234,7 @@ export default function CharacterMaker({ onDone }) {
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await fetch("/api/ai-images", {
+    const res = await fetch("http://localhost:8080/api/ai-images", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`
