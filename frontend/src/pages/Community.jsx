@@ -3,6 +3,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
 import PostUploadModal from '../components/PostUploadModal';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -20,7 +21,7 @@ function formatRelativeTime(dateString) {
   return `${diffDay}일 전`;
 }
 
-function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
+function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEditPost, user, aiImages, goodsImage }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,8 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const [editCommentValue, setEditCommentValue] = useState('');
   const [commentMenuOpenId, setCommentMenuOpenId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  // 추가: 게시글 수정 모달 상태
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // 현재 유저 정보 가져오기
   const fetchCurrentUser = async () => {
@@ -171,9 +174,20 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
               <div className="text-xs text-gray-500">{formatRelativeTime(post.createdAt)} · <span className="inline-block align-middle">🌐</span></div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 게시글 작성자만 수정 버튼 표시 */}
+            {currentUser && currentUser.id === post.userId && (
+              <button 
+                onClick={() => setEditModalOpen(true)}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                수정
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         {/* 본문 */}
         <div className="p-4 border-b border-gray-200">
@@ -276,158 +290,18 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
           </form>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CommunityPostEditModal({ post, isOpen, onClose, onUpdated, user }) {
-  const [content, setContent] = useState(post?.content || '');
-  const [image, setImage] = useState(post?.imageUrl || '');
-  const [visibility, setVisibility] = useState(post?.status === 'PRIVATE' ? '나만 보기' : '전체 공개');
-  const [loading, setLoading] = useState(false);
-  const [showEmoji, setShowEmoji] = useState(false);
-
-  const DUMMY_IMAGES = [
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-    "https://images.unsplash.com/photo-1519125323398-675f0ddb6308",
-    "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
-  ];
-
-  const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", "🎉", "😆", "😇", "😺", "🐶", "🌸", "🍀", "🍕", "❤️", "⭐", "😜", "😏"];
-
-  useEffect(() => {
-    if (isOpen && post) {
-      setContent(post.content || '');
-      setImage(post.imageUrl || DUMMY_IMAGES[0]);
-      setVisibility(post.status === 'PRIVATE' ? '나만 보기' : '전체 공개');
-    }
-  }, [isOpen, post]);
-
-  const handleEmojiSelect = (emoji) => {
-    setContent(content + emoji);
-    setShowEmoji(false);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      await axios.put(`http://localhost:8083/goods-posts/${post.id}`, {
-        content,
-        imageUrl: image,
-        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
-      }, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      alert('수정되었습니다.');
-      if (onUpdated) onUpdated();
-      onClose();
-    } catch (err) {
-      alert('수정 실패: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen || !post || !user) return null;
-  
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fadeIn min-h-screen">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full relative flex flex-col items-center">
-        <button
-          className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700"
-          onClick={onClose}
-          aria-label="닫기"
-        >×</button>
-        <h2 className="text-lg font-bold mb-4">게시글 수정</h2>
-        {/* 프로필/공개범위/본문 */}
-        <div className="flex items-center w-full mb-3">
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
-            {user?.profileImage ? (
-              <img src={user.profileImage} alt="프로필" className="w-full h-full object-cover rounded-full" />
-            ) : (
-              <span className="text-gray-500 text-xl">👤</span>
-            )}
-          </div>
-          <div>
-            <div className="font-semibold">{user?.name}</div>
-            <select
-              className="text-xs border rounded px-2 py-1 mt-1"
-              value={visibility}
-              onChange={e => setVisibility(e.target.value)}
-            >
-              <option>전체 공개</option>
-              <option>나만 보기</option>
-            </select>
-          </div>
-        </div>
-        <textarea
-          className="w-full border rounded p-3 mb-2 min-h-[80px] resize-none"
-          placeholder="상상공간 게시글 본문"
-          value={content}
-          onChange={e => setContent(e.target.value)}
-        />
-        {/* 이미지 선택 썸네일 */}
-        <div className="w-full flex gap-2 mb-2 justify-center">
-          {DUMMY_IMAGES.map((img, idx) => (
-            <button
-              key={img}
-              type="button"
-              className={`border-2 rounded-lg p-1 ${image === img ? 'border-blue-500' : 'border-transparent'}`}
-              onClick={() => setImage(img)}
-              style={{ background: image === img ? '#e0f2fe' : 'transparent' }}
-            >
-              <img src={img} alt={`굿즈 이미지 ${idx+1}`} className="w-20 h-20 object-cover rounded-md" />
-            </button>
-          ))}
-        </div>
-        {/* 선택된 이미지 미리보기 */}
-        {image && (
-          <div className="relative w-full flex justify-center mb-2">
-            <img src={image} alt="굿즈 이미지" className="max-h-56 rounded-lg object-contain" />
-          </div>
-        )}
-        {/* 이모지 버튼 영역 */}
-        <div className="flex w-full justify-end gap-2 mb-3 relative">
-          <div className="relative">
-            <button
-              type="button"
-              className="flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl relative"
-              onClick={() => setShowEmoji((v) => !v)}
-            >
-              <span role="img" aria-label="이모지">😊</span>
-            </button>
-            {showEmoji && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-5 gap-2 z-10" style={{ width: '220px' }}>
-                {/* 꼬리(삼각형) */}
-                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-l border-t border-gray-200 rounded-tl-xl rotate-45 z-[-1]" />
-                {EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    className="text-2xl hover:bg-gray-100 rounded p-2 text-center"
-                    onClick={() => handleEmojiSelect(emoji)}
-                    type="button"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mt-2"
-          onClick={handleSubmit}
-          disabled={!content.trim() || loading}
-        >
-          {loading ? '수정 중...' : '수정하기'}
-        </button>
-      </div>
+      {/* 게시글 수정 모달 */}
+      <PostUploadModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onPost={onEditPost}
+        user={user}
+        aiImages={aiImages}
+        goodsImage={goodsImage}
+        editMode={true}
+        editPost={post}
+        onEdit={onEditPost}
+      />
     </div>
   );
 }
@@ -566,6 +440,9 @@ export default function Community() {
   // 굿즈 게시물 등록 모달 state 제거 (content, visibility, image, showEmoji)
   // 추가: 현재 로그인 유저 ID
   const [user, setUser] = useState(null); // userId -> user 객체로 변경
+  // 추가: 사용자 이미지 상태
+  const [aiImages, setAiImages] = useState([]);
+  const [goodsImage, setGoodsImage] = useState(null);
 
   // 유저 정보 가져오기
   useEffect(() => {
@@ -578,6 +455,60 @@ export default function Community() {
       .then(user => setUser(user))
       .catch(() => setUser(null));
   }, []);
+
+  // 사용자 AI 이미지 가져오기
+  const fetchUserImages = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      console.log("JWT 토큰이 없습니다. AI 이미지를 불러올 수 없습니다.");
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      console.log("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // AI 이미지 가져오기
+      const aiRes = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        setAiImages(aiData);
+      }
+
+      // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
+      const goodsRes = await fetch(`http://localhost:8080/api/saved-goods/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (goodsRes.ok) {
+        const goodsData = await goodsRes.json();
+        if (goodsData.length > 0) {
+          // 가장 최근에 저장된 굿즈의 이미지 URL 사용
+          setGoodsImage(goodsData[0].imageUrl);
+        }
+      }
+    } catch (error) {
+      console.error("사용자 이미지 불러오기 오류:", error);
+    }
+  };
+
+  // 게시글 등록 모달 열 때 이미지 가져오기
+  const handleCreateModalOpen = () => {
+    fetchUserImages();
+    setCreateModalOpen(true);
+  };
 
   // 게시글 등록 API 연동
   const handleCreatePost = async ({ content, visibility, image }) => {
@@ -680,6 +611,7 @@ export default function Community() {
   // 수정 모달 열기
   const handleEdit = (post) => {
     setEditTargetPost(post);
+    fetchUserImages(); // 수정할 때도 사용자 이미지 가져오기
     setEditModalOpen(true);
   };
   // 수정 모달 닫기
@@ -687,6 +619,29 @@ export default function Community() {
     setEditModalOpen(false);
     setEditTargetPost(null);
   };
+
+  // 게시글 수정 API 연동
+  const handleEditPost = async ({ content, visibility, image }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.put(`http://localhost:8083/goods-posts/${editTargetPost.id}`, {
+        content,
+        imageUrl: image,
+        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
+      }, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      alert('수정되었습니다.');
+      setEditModalOpen(false);
+      setEditTargetPost(null);
+      fetchPosts();
+    } catch (err) {
+      alert('수정 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   // 삭제 연동
   const handleDelete = async (post) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -790,15 +745,23 @@ export default function Community() {
           isOpen={detailModalOpen}
           onClose={handleDetailModalClose}
           onCommentAdded={handleCommentAdded}
+          onEditPost={handleEditPost}
+          user={user}
+          aiImages={aiImages}
+          goodsImage={goodsImage}
         />
       )}
       {/* 게시글 수정 모달 */}
-      <CommunityPostEditModal
-        post={editTargetPost}
-        isOpen={editModalOpen}
+      <PostUploadModal
+        open={editModalOpen}
         onClose={handleEditModalClose}
-        onUpdated={fetchPosts}
-        user={user}
+        onPost={handleEditPost}
+        user={user} // user prop 전달
+        aiImages={aiImages} // AI 이미지 전달
+        goodsImage={goodsImage} // 굿즈 이미지 전달
+        editMode={true} // 수정 모드 활성화
+        editPost={editTargetPost} // 수정할 게시글 데이터
+        onEdit={handleEditPost} // 수정 콜백
       />
       {/* 굿즈 게시물 등록 모달 (PostUploadModal 사용) */}
       <PostUploadModal
@@ -806,10 +769,12 @@ export default function Community() {
         onClose={() => setCreateModalOpen(false)}
         onPost={handleCreatePost}
         user={user} // user prop 전달
+        aiImages={aiImages} // AI 이미지 전달
+        goodsImage={goodsImage} // 굿즈 이미지 전달
       />
       <button
         className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center z-50"
-        onClick={() => setCreateModalOpen(true)}
+        onClick={handleCreateModalOpen}
       >
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
           <line x1="16" y1="8" x2="16" y2="24" stroke="white" strokeWidth="3" strokeLinecap="round"/>
