@@ -7,6 +7,9 @@ import com.example.demo.dto.UserInfoDTO;
 import com.example.demo.dto.UserPasswordDTO;
 import com.example.demo.dto.UserUpdateDTO;
 import com.example.demo.service.UserService;
+import com.example.demo.service.TokenService;
+import com.example.demo.dto.JwtResponseDTO;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,7 @@ public class UserController {
 
     private final UserService svc;
     private final UserClient userClient;
+    private final TokenService tokenService; 
 
     @Operation(summary = "모든 사용자 조회")
     @GetMapping
@@ -61,6 +65,10 @@ public class UserController {
             log.error("userId를 추출할 수 없습니다");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        String role = authentication.getAuthorities().stream()
+            .findFirst()
+            .map(granted -> granted.getAuthority())
+            .orElse("ROLE_USER");
         
         UserInfoDTO dto = svc.findById(userId);
         log.info("사용자 정보 조회 완료: {}", dto);
