@@ -37,7 +37,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         log.debug("[OAuth2SuccessHandler] success start");
 
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
-        
+
         String provider = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
         String providerId;
         if ("kakao".equals(provider)) {
@@ -65,12 +65,19 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
         JwtResponseDTO tokens = tokenService.issueTokens(user.getId(), role);
-        tokenService.writeTokensAsCookies(tokens, response);
+         tokenService.writeTokensAsCookies(tokens, response);
+
+        // ✅ Access Token만 URL로 전달
+        String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth2/redirect")
+                .queryParam("accessToken", tokens.getAccessToken()) // 프론트에서 읽어서 로컬스토리지에 저장
+                .build()
+                .toUriString();
 
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("Pragma", "no-cache");
 
-        response.sendRedirect("http://localhost:5173/oauth2/redirect");
+        log.debug("[OAuth2SuccessHandler] Redirecting to: {}", redirectUrl);
+        response.sendRedirect(redirectUrl);
     }
 }
 

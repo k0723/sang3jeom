@@ -84,7 +84,10 @@ public class AuthController {
 
         JwtResponseDTO dto = tokenService.issueTokens(user.getId(), role);
         tokenService.writeTokensAsCookies(dto, res);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok()
+        .header("Authorization", "Bearer " + dto.getAccessToken())
+        .header("X-Refresh-Token", dto.getRefreshToken())
+        .body(dto);
     }
 
     @Operation(summary = "OAuth2 인가 시작", description = "소셜 로그인(provider) 인가 URL로 리다이렉트")
