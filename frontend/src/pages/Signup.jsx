@@ -32,6 +32,20 @@ const Signup = () => {
     marketing: false
   });
 
+  //유효성 검사 로직 
+  // 이메일 유효성 검사
+  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  // 비밀번호 유효성 검사 (8자 이상 + 영문자 + 숫자/특수문자 포함)
+  const isValidPassword = (password) =>
+    /^(?=.*[A-Za-z])(?=.*[\d\W]).{8,}$/.test(password);
+
+  // 전화번호 유효성 검사 (010-XXXX-XXXX)
+  const isValidPhone = (phone) => /^010-\d{4}-\d{4}$/.test(phone);
+
+  // 이름 유효성 검사 (2자 이상, 공백 제외)
+const isValidName = (name) => name.trim().length >= 2;
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -49,6 +63,10 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isFormValid()) {
+    setError("입력값을 다시 확인해주세요.");
+    return;
+    }
     setIsLoading(true);
     setError('');
     // TODO: 실제 회원가입 로직 구현
@@ -88,14 +106,13 @@ const Signup = () => {
 
   const isFormValid = () => {
     return (
-      formData.name &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword &&
-      formData.phone &&
+      isValidName(formData.name) &&
+      isValidEmail(formData.email) &&
+      isValidPassword(formData.password) &&
+      formData.password === formData.confirmPassword &&
+      isValidPhone(formData.phone) &&
       agreements.terms &&
-      agreements.privacy &&
-      formData.password === formData.confirmPassword
+      agreements.privacy
     );
   };
 
@@ -176,6 +193,9 @@ const Signup = () => {
                     placeholder="your@email.com"
                   />
                 </div>
+                {formData.email && !isValidEmail(formData.email) && (
+                  <p className="mt-1 text-xs text-red-500">올바른 이메일 주소를 입력하세요.</p>
+                )}
               </div>
 
               {/* 비밀번호 */}
@@ -210,6 +230,9 @@ const Signup = () => {
                     )}
                   </button>
                 </div>
+                  {formData.password && !isValidPassword(formData.password) && (
+                  <p className="mt-1 text-xs text-red-500">올바른 비밀번호를 입력하세요.</p>
+                  )}
                 <p className="mt-1 text-xs text-gray-500">8자 이상, 영문/숫자/특수문자 조합</p>
               </div>
 
@@ -270,6 +293,9 @@ const Signup = () => {
                   className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="010-1234-5678"
                 />
+                  {formData.phone && !isValidPhone(formData.phone) && (
+                  <p className="mt-1 text-xs text-red-500">010-1234-1234 형식으로 입력하세요.</p>
+                )}
               </div>
 
               {/* 약관 동의 */}

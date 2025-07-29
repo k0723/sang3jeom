@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
+import PostUploadModal from '../components/PostUploadModal';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -19,7 +21,7 @@ function formatRelativeTime(dateString) {
   return `${diffDay}일 전`;
 }
 
-function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
+function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEditPost, user, aiImages, goodsImage }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,6 +29,29 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const [editCommentId, setEditCommentId] = useState(null);
   const [editCommentValue, setEditCommentValue] = useState('');
   const [commentMenuOpenId, setCommentMenuOpenId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  // 추가: 게시글 수정 모달 상태
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // 현재 유저 정보 가져오기
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+      
+      const response = await fetch("http://localhost:8080/users/me", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (err) {
+      console.error('유저 정보 가져오기 실패:', err);
+    }
+  };
 
   // 댓글 목록 가져오기
   const fetchComments = async () => {
@@ -49,9 +74,11 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
       setLoading(true);
       await axios.post(`http://localhost:8083/comments`, {
         content: newComment,
-        goodsPostId: post.id,
-        userId: 1, // 임시 사용자 ID
-        userName: '사용자' // 임시 사용자명
+        goodsPostId: Number(post.id)
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
       });
       setNewComment('');
       await fetchComments();
@@ -67,7 +94,15 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`http://localhost:8083/comments/${commentId}`);
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       await fetchComments();
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
@@ -89,9 +124,18 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   const handleEditSave = async (commentId) => {
     if (!editCommentValue.trim()) return;
     try {
-      await axios.put(`http://localhost:8083/comments/${commentId}`, {
-        content: editCommentValue
-      });
+      const token = localStorage.getItem("accessToken");
+      await axios.put(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          content: editCommentValue
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       setEditCommentId(null);
       setEditCommentValue('');
       await fetchComments();
@@ -107,7 +151,10 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
   };
 
   useEffect(() => {
-    if (isOpen) fetchComments();
+    if (isOpen) {
+      fetchComments();
+      fetchCurrentUser();
+    }
     // eslint-disable-next-line
   }, [isOpen, post.id]);
 
@@ -127,9 +174,20 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
               <div className="text-xs text-gray-500">{formatRelativeTime(post.createdAt)} · <span className="inline-block align-middle">🌐</span></div>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 게시글 작성자만 수정 버튼 표시 */}
+            {currentUser && currentUser.id === post.userId && (
+              <button 
+                onClick={() => setEditModalOpen(true)}
+                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                수정
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         {/* 본문 */}
         <div className="p-4 border-b border-gray-200">
@@ -186,17 +244,19 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
                     ) : (
                       <div className="flex items-center">
                         <p className="text-sm text-gray-800 mb-1 flex-1">{comment.content}</p>
-                        <div className="relative ml-2">
-                          <button onClick={() => handleMenuToggle(comment.id)} className="p-1 rounded-full hover:bg-gray-100">
-                            <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                          </button>
-                          {commentMenuOpenId === comment.id && (
-                            <div className="absolute right-0 mt-2 w-20 bg-white border border-gray-200 rounded shadow z-10">
-                              <button onClick={() => { handleEditStart(comment); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-blue-50 text-blue-600">수정</button>
-                              <button onClick={() => { handleDeleteComment(comment.id); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-red-50 text-red-500">삭제</button>
-                            </div>
-                          )}
-                        </div>
+                        {currentUser && currentUser.id === comment.userId && (
+                          <div className="relative ml-2">
+                            <button onClick={() => handleMenuToggle(comment.id)} className="p-1 rounded-full hover:bg-gray-100">
+                              <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                            </button>
+                            {commentMenuOpenId === comment.id && (
+                              <div className="absolute right-0 mt-2 w-20 bg-white border border-gray-200 rounded shadow z-10">
+                                <button onClick={() => { handleEditStart(comment); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-blue-50 text-blue-600">수정</button>
+                                <button onClick={() => { handleDeleteComment(comment.id); setCommentMenuOpenId(null); }} className="block w-full px-3 py-2 text-left text-xs hover:bg-red-50 text-red-500">삭제</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -230,97 +290,23 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
           </form>
         </div>
       </div>
+      {/* 게시글 수정 모달 */}
+      <PostUploadModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        onPost={onEditPost}
+        user={user}
+        aiImages={aiImages}
+        goodsImage={goodsImage}
+        editMode={true}
+        editPost={post}
+        onEdit={onEditPost}
+      />
     </div>
   );
 }
 
-function CommunityPostEditModal({ post, isOpen, onClose, onUpdated }) {
-  const [content, setContent] = useState(post?.content || '');
-  const [imageUrl, setImageUrl] = useState(post?.imageUrl || '');
-  const [status, setStatus] = useState(post?.status || 'PUBLISHED');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen && post) {
-      setContent(post.content || '');
-      setImageUrl(post.imageUrl || '');
-      setStatus(post.status || 'PUBLISHED');
-    }
-  }, [isOpen, post]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axios.put(`http://localhost:8083/goods-posts/${post.id}`, {
-        content,
-        imageUrl,
-        status
-      });
-      alert('수정되었습니다.');
-      if (onUpdated) onUpdated();
-      onClose();
-    } catch (err) {
-      alert('수정 실패: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen || !post) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full relative flex flex-col items-center justify-center">
-        <button
-          className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700"
-          onClick={onClose}
-          aria-label="닫기"
-        >×</button>
-        <h2 className="text-xl font-bold mb-4">게시글 수정</h2>
-        <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1">내용</label>
-            <textarea
-              className="w-full border rounded p-2 min-h-[80px]"
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">이미지 URL</label>
-            <input
-              className="w-full border rounded p-2"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder="이미지 URL 입력"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">상태</label>
-            <select
-              className="w-full border rounded p-2"
-              value={status}
-              onChange={e => setStatus(e.target.value)}
-            >
-              <option value="ALL">전체 공개</option>
-              <option value="PRIVATE">나만 보기</option>
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 disabled:bg-gray-300"
-            disabled={loading}
-          >
-            {loading ? '수정 중...' : '수정하기'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, onSave, onDetail, onLikeToggle, onCommentClick }) {
+function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, onSave, onDetail, onLikeToggle, onCommentClick, userId }) {
   const [showMenu, setShowMenu] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likeCount || 0);
   const [commentCount, setCommentCount] = useState(post.commentCount || 0);
@@ -334,7 +320,12 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
       post.id === postId ? { ...post, likeLoading: true } : post
     ));
     try {
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`);
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -368,17 +359,20 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
             </div>
           </div>
         </div>
-        <div className="relative">
-          <button onClick={() => setShowMenu(v => !v)} className="p-2 rounded-full hover:bg-gray-100">
-            <MoreHorizontal className="w-5 h-5 text-gray-500" />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-28 bg-white border rounded shadow z-10">
-              <button onClick={() => onEdit(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50">수정</button>
-              <button onClick={() => onDelete(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50 text-red-500">삭제</button>
-            </div>
-          )}
-        </div>
+        {/* 수정/삭제 버튼: 본인만 노출 */}
+        {userId === post.userId && (
+          <div className="relative">
+            <button onClick={() => setShowMenu(v => !v)} className="p-2 rounded-full hover:bg-gray-100">
+              <MoreHorizontal className="w-5 h-5 text-gray-500" />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-28 bg-white border rounded shadow z-10">
+                <button onClick={() => onEdit(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50">수정</button>
+                <button onClick={() => onDelete(post)} className="block w-full px-4 py-2 text-left hover:bg-gray-50 text-red-500">삭제</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {/* 본문 */}
       <div className="mb-4">
@@ -443,37 +437,97 @@ export default function Community() {
   const [editTargetPost, setEditTargetPost] = useState(null);
   // 추가: 굿즈 게시물 등록 모달 상태
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  // 굿즈 게시물 등록 모달 state
-  const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState("전체 공개");
-  const [image, setImage] = useState(null);
-  const [showEmoji, setShowEmoji] = useState(false);
+  // 굿즈 게시물 등록 모달 state 제거 (content, visibility, image, showEmoji)
+  // 추가: 현재 로그인 유저 ID
+  const [user, setUser] = useState(null); // userId -> user 객체로 변경
+  // 추가: 사용자 이미지 상태
+  const [aiImages, setAiImages] = useState([]);
+  const [goodsImage, setGoodsImage] = useState(null);
 
-  // 이미지 업로드 핸들러
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setImage(ev.target.result);
-      reader.readAsDataURL(file);
+  // 유저 정보 가져오기
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    fetch("http://localhost:8080/users/me", {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(user => setUser(user))
+      .catch(() => setUser(null));
+  }, []);
+
+  // 사용자 AI 이미지 가져오기
+  const fetchUserImages = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      console.log("JWT 토큰이 없습니다. AI 이미지를 불러올 수 없습니다.");
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      console.log("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // AI 이미지 가져오기
+      const aiRes = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        setAiImages(aiData);
+      }
+
+      // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
+      const goodsRes = await fetch(`http://localhost:8080/api/saved-goods/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (goodsRes.ok) {
+        const goodsData = await goodsRes.json();
+        if (goodsData.length > 0) {
+          // 가장 최근에 저장된 굿즈의 이미지 URL 사용
+          setGoodsImage(goodsData[0].imageUrl);
+        }
+      }
+    } catch (error) {
+      console.error("사용자 이미지 불러오기 오류:", error);
     }
   };
-  // 이모지 선택
-  const handleEmojiSelect = (emoji) => {
-    setContent(content + emoji);
-    setShowEmoji(false);
+
+  // 게시글 등록 모달 열 때 이미지 가져오기
+  const handleCreateModalOpen = () => {
+    fetchUserImages();
+    setCreateModalOpen(true);
   };
-  // 게시 버튼 핸들러(샘플, 실제 업로드 연동 필요)
-  const handleCreatePost = (e) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    // TODO: 실제 업로드 연동
-    setCreateModalOpen(false);
-    setContent("");
-    setVisibility("전체 공개");
-    setImage(null);
-    setShowEmoji(false);
-    // 게시글 목록 새로고침 등 필요시 추가
+
+  // 게시글 등록 API 연동
+  const handleCreatePost = async ({ content, visibility, image }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.post('http://localhost:8083/goods-posts', {
+        content,
+        visibility,
+        imageUrl: image
+      }, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      setCreateModalOpen(false);
+      fetchPosts();
+    } catch (err) {
+      alert('게시글 등록 실패: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   // 게시글 데이터 + 좋아요 상태 가져오기
@@ -483,10 +537,14 @@ export default function Community() {
       const response = await axios.get('http://localhost:8083/goods-posts');
       const sortedPosts = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       // 각 게시글에 대해 좋아요 상태 체크
-      const userId = 1; // 임시
+      const token = localStorage.getItem("accessToken");
       const postsWithLike = await Promise.all(sortedPosts.map(async (post) => {
         try {
-          const res = await axios.get(`http://localhost:8083/likes/post/${post.id}/check`);
+          const res = await axios.get(`http://localhost:8083/likes/post/${post.id}/check`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
           return { ...post, isLiked: res.data.liked };
         } catch {
           return { ...post, isLiked: false };
@@ -531,7 +589,12 @@ export default function Community() {
       post.id === postId ? { ...post, likeLoading: true } : post
     ));
     try {
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`);
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -548,6 +611,7 @@ export default function Community() {
   // 수정 모달 열기
   const handleEdit = (post) => {
     setEditTargetPost(post);
+    fetchUserImages(); // 수정할 때도 사용자 이미지 가져오기
     setEditModalOpen(true);
   };
   // 수정 모달 닫기
@@ -555,11 +619,39 @@ export default function Community() {
     setEditModalOpen(false);
     setEditTargetPost(null);
   };
+
+  // 게시글 수정 API 연동
+  const handleEditPost = async ({ content, visibility, image }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.put(`http://localhost:8083/goods-posts/${editTargetPost.id}`, {
+        content,
+        imageUrl: image,
+        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
+      }, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      alert('수정되었습니다.');
+      setEditModalOpen(false);
+      setEditTargetPost(null);
+      fetchPosts();
+    } catch (err) {
+      alert('수정 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   // 삭제 연동
   const handleDelete = async (post) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`http://localhost:8083/goods-posts/${post.id}`);
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(`http://localhost:8083/goods-posts/${post.id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       alert('삭제되었습니다.');
       fetchPosts();
     } catch (err) {
@@ -641,6 +733,7 @@ export default function Community() {
               onDetail={handleDetail}
               onLikeToggle={() => handleLikeToggle(post.id)}
               onCommentClick={handleCommentClick}
+              userId={user?.id} // 추가
             />
           ))
         )}
@@ -652,106 +745,41 @@ export default function Community() {
           isOpen={detailModalOpen}
           onClose={handleDetailModalClose}
           onCommentAdded={handleCommentAdded}
+          onEditPost={handleEditPost}
+          user={user}
+          aiImages={aiImages}
+          goodsImage={goodsImage}
         />
       )}
       {/* 게시글 수정 모달 */}
-      <CommunityPostEditModal
-        post={editTargetPost}
-        isOpen={editModalOpen}
+      <PostUploadModal
+        open={editModalOpen}
         onClose={handleEditModalClose}
-        onUpdated={fetchPosts}
+        onPost={handleEditPost}
+        user={user} // user prop 전달
+        aiImages={aiImages} // AI 이미지 전달
+        goodsImage={goodsImage} // 굿즈 이미지 전달
+        editMode={true} // 수정 모드 활성화
+        editPost={editTargetPost} // 수정할 게시글 데이터
+        onEdit={handleEditPost} // 수정 콜백
       />
-      {/* 굿즈 게시물 등록 모달 (PostUploadModal 스타일) */}
-      {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fadeIn min-h-screen">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full relative flex flex-col items-center">
-            <button
-              className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700"
-              onClick={() => setCreateModalOpen(false)}
-              aria-label="닫기"
-            >×</button>
-            <h2 className="text-lg font-bold mb-4">굿즈 게시물 만들기</h2>
-            {/* 프로필/공개범위/본문 */}
-            <div className="flex items-center w-full mb-3">
-              <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                <span className="text-gray-500 text-xl">👤</span>
-              </div>
-              <div>
-                <div className="font-semibold">이주형</div>
-                <select
-                  className="text-xs border rounded px-2 py-1 mt-1"
-                  value={visibility}
-                  onChange={e => setVisibility(e.target.value)}
-                >
-                  <option>전체 공개</option>
-                  <option>나만 보기</option>
-                </select>
-              </div>
-            </div>
-            <textarea
-              className="w-full border rounded p-3 mb-2 min-h-[80px] resize-none"
-              placeholder="상상공간 게시글 본문"
-              value={content}
-              onChange={e => setContent(e.target.value)}
-            />
-            {/* 첨부 이미지 */}
-            {image && (
-              <div className="relative w-full flex justify-center mb-2">
-                <img src={image} alt="굿즈 이미지" className="max-h-56 rounded-lg object-contain" />
-                <button
-                  className="absolute top-2 right-2 bg-white/80 rounded-full p-1 text-xl text-gray-500 hover:text-red-500"
-                  onClick={() => setImage(null)}
-                  aria-label="이미지 삭제"
-                >×</button>
-              </div>
-            )}
-            {/* 사진/이모지 버튼 영역 */}
-            <div className="flex w-full justify-end gap-2 mb-3 relative">
-              <label className="cursor-pointer flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl">
-                <span role="img" aria-label="사진">🖼️</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center justify-center w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-2xl relative"
-                  onClick={() => setShowEmoji((v) => !v)}
-                >
-                  <span role="img" aria-label="이모지">😊</span>
-                </button>
-                {showEmoji && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-white border rounded-xl shadow-lg p-2 grid grid-cols-5 gap-2 z-10" style={{ width: '220px' }}>
-                    {/* 꼬리(삼각형) */}
-                    <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-l border-t border-gray-200 rounded-tl-xl rotate-45 z-[-1]" />
-                    {EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        className="text-2xl hover:bg-gray-100 rounded p-2 text-center"
-                        onClick={() => handleEmojiSelect(emoji)}
-                        type="button"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mt-2"
-              onClick={handleCreatePost}
-              disabled={!content.trim()}
-            >
-              게시
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 굿즈 게시물 등록 모달 (PostUploadModal 사용) */}
+      <PostUploadModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onPost={handleCreatePost}
+        user={user} // user prop 전달
+        aiImages={aiImages} // AI 이미지 전달
+        goodsImage={goodsImage} // 굿즈 이미지 전달
+      />
       <button
-        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center text-3xl font-bold z-50"
-        onClick={() => setCreateModalOpen(true)}
+        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg w-16 aspect-square flex items-center justify-center z-50"
+        onClick={handleCreateModalOpen}
       >
-        +
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <line x1="16" y1="8" x2="16" y2="24" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+          <line x1="8" y1="16" x2="24" y2="16" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
       </button>
     </div>
   );

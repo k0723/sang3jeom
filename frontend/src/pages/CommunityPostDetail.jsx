@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock, ArrowLeft } from 'lucide-react';
+import PostUploadModal from '../components/PostUploadModal';
+import { getUserIdFromToken } from '../utils/jwtUtils';
+import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock, ArrowLeft, Edit, Trash2, CheckCircle, MoreVertical } from 'lucide-react';
 
 function formatRelativeTime(dateString) {
   const now = new Date();
@@ -31,6 +33,35 @@ export default function CommunityPostDetail() {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentValue, setEditCommentValue] = useState('');
+  const [showPostMenu, setShowPostMenu] = useState(false);
+  // 수정 모달 관련 state 변경
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  // 사용자 이미지 상태 추가
+  const [aiImages, setAiImages] = useState([]);
+  const [goodsImage, setGoodsImage] = useState(null);
+
+  // 현재 유저 정보 가져오기
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+      
+      const response = await fetch("http://localhost:8080/users/me", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (err) {
+      console.error('유저 정보 가져오기 실패:', err);
+    }
+  };
 
   // 게시글 데이터 가져오기
   const fetchPost = async () => {
@@ -42,7 +73,12 @@ export default function CommunityPostDetail() {
       
       // 좋아요 상태 체크
       try {
-        const likeResponse = await axios.get(`http://localhost:8083/likes/post/${id}/check`);
+        const token = localStorage.getItem("accessToken");
+        const likeResponse = await axios.get(`http://localhost:8083/likes/post/${id}/check`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         setIsLiked(likeResponse.data.liked);
       } catch {
         setIsLiked(false);
@@ -70,7 +106,12 @@ export default function CommunityPostDetail() {
   // 좋아요 토글
   const handleLikeToggle = async () => {
     try {
-      const response = await axios.post(`http://localhost:8083/likes/${id}`);
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(`http://localhost:8083/likes/${id}`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       const { liked, likeCount: newLikeCount } = response.data;
       setIsLiked(liked);
       setLikeCount(newLikeCount);
@@ -86,18 +127,189 @@ export default function CommunityPostDetail() {
     
     try {
       setCommentSubmitting(true);
-      await axios.post(`http://localhost:8083/comments`, {
-        content: newComment,
-        goodsPostId: id,
-        userId: 1, // 임시 사용자 ID
-        userName: '사용자' // 임시 사용자명
-      });
+      const token = localStorage.getItem("accessToken");
+      await axios.post(
+        `http://localhost:8083/comments`,
+        {
+          content: newComment,
+          goodsPostId: Number(id)
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       setNewComment('');
       await fetchComments();
     } catch (err) {
       alert('댓글 작성에 실패했습니다.');
     } finally {
       setCommentSubmitting(false);
+    }
+  };
+
+  // 댓글 수정 시작
+  const handleEditStart = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditCommentValue(comment.content);
+  };
+
+  // 댓글 수정 취소
+  const handleEditCancel = () => {
+    setEditingCommentId(null);
+    setEditCommentValue('');
+  };
+
+  // 댓글 수정 저장
+  const handleCommentEditSave = async (commentId) => {
+    if (!editCommentValue.trim()) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.put(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          content: editCommentValue
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      setEditingCommentId(null);
+      setEditCommentValue('');
+      await fetchComments();
+    } catch (err) {
+      alert('댓글 수정에 실패했습니다.');
+    }
+  };
+
+  // 댓글 삭제
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(
+        `http://localhost:8083/comments/${commentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      await fetchComments();
+    } catch (err) {
+      alert('댓글 삭제에 실패했습니다.');
+    }
+  };
+
+  // 사용자 AI 이미지 가져오기
+  const fetchUserImages = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      console.log("JWT 토큰이 없습니다. AI 이미지를 불러올 수 없습니다.");
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      console.log("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // AI 이미지 가져오기
+      const aiRes = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        setAiImages(aiData);
+      }
+
+      // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
+      const goodsRes = await fetch(`http://localhost:8080/api/saved-goods/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (goodsRes.ok) {
+        const goodsData = await goodsRes.json();
+        if (goodsData.length > 0) {
+          // 가장 최근에 저장된 굿즈의 이미지 URL 사용
+          setGoodsImage(goodsData[0].imageUrl);
+        }
+      }
+    } catch (error) {
+      console.error("사용자 이미지 불러오기 오류:", error);
+    }
+  };
+
+  // 게시글 수정 모달 열기
+  const handleEditPost = () => {
+    fetchUserImages(); // 수정할 때 사용자 이미지 가져오기
+    setEditModalOpen(true);
+    setShowPostMenu(false);
+  };
+
+  // 게시글 수정 모달 닫기
+  const handleEditModalClose = () => {
+    setEditModalOpen(false);
+  };
+
+  // 게시글 수정 저장
+  const handleEditSave = async ({ content, visibility, image }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.put(`http://localhost:8083/goods-posts/${id}`, {
+        content,
+        imageUrl: image,
+        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      // 게시글 정보 업데이트
+      setPost(prev => ({
+        ...prev,
+        content,
+        imageUrl: image,
+        status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
+      }));
+      
+      alert('수정되었습니다.');
+      setEditModalOpen(false);
+    } catch (err) {
+      alert('수정 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // 게시글 삭제
+  const handleDeletePost = async () => {
+    if (!window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(`http://localhost:8083/goods-posts/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      alert('게시글이 삭제되었습니다.');
+      navigate('/community');
+    } catch (err) {
+      alert('게시글 삭제에 실패했습니다.');
     }
   };
 
@@ -115,7 +327,22 @@ export default function CommunityPostDetail() {
   useEffect(() => {
     fetchPost();
     fetchComments();
+    fetchCurrentUser();
   }, [id]);
+
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showPostMenu && !event.target.closest('.post-menu')) {
+        setShowPostMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPostMenu]);
 
   if (loading) {
     return (
@@ -185,13 +412,53 @@ export default function CommunityPostDetail() {
                 </div>
               </div>
             </div>
-            <button 
-              onClick={handleShare}
-              className="p-2 rounded-full hover:bg-gray-100"
-              title="공유하기"
-            >
-              <Share2 className="w-5 h-5 text-gray-500" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleShare}
+                className="p-2 rounded-full hover:bg-gray-100"
+                title="공유하기"
+              >
+                <Share2 className="w-5 h-5 text-gray-500" />
+              </button>
+              
+              {/* 현재 유저의 게시글이면 수정/삭제 메뉴 표시 */}
+              {currentUser && currentUser.id === post.userId && (
+                <div className="relative post-menu">
+                  <button 
+                    onClick={() => setShowPostMenu(!showPostMenu)}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                    title="더보기"
+                  >
+                    <MoreVertical className="w-5 h-5 text-gray-500" />
+                  </button>
+                  
+                  {showPostMenu && (
+                    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
+                      <button
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          handleEditPost();
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                        수정
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          handleDeletePost();
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        삭제
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 본문 */}
@@ -287,7 +554,52 @@ export default function CommunityPostDetail() {
                       <span className="font-semibold text-sm">{comment.userName || 'Unknown'}</span>
                       <span className="text-xs text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
                     </div>
-                    <p className="text-gray-800">{comment.content}</p>
+                    {editingCommentId === comment.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editCommentValue}
+                          onChange={(e) => setEditCommentValue(e.target.value)}
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                        <button
+                          onClick={() => handleCommentEditSave(comment.id)}
+                          className="p-2 rounded-full hover:bg-green-100 text-green-600"
+                          title="저장"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleEditCancel}
+                          className="p-2 rounded-full hover:bg-red-100 text-red-600"
+                          title="취소"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-800">{comment.content}</span>
+                        {currentUser && currentUser.id === comment.userId && (
+                          <div className="flex items-center gap-1 text-gray-500 text-xs">
+                            <button
+                              onClick={() => handleEditStart(comment)}
+                              className="p-1 rounded-full hover:bg-gray-100"
+                              title="수정"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="p-1 rounded-full hover:bg-gray-100 text-red-600"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -295,6 +607,19 @@ export default function CommunityPostDetail() {
           )}
         </div>
       </div>
+
+      {/* 게시글 수정 모달 */}
+      <PostUploadModal
+        open={editModalOpen}
+        onClose={handleEditModalClose}
+        onPost={handleEditSave}
+        user={currentUser}
+        aiImages={aiImages}
+        goodsImage={goodsImage}
+        editMode={true}
+        editPost={post}
+        onEdit={handleEditSave}
+      />
     </div>
   );
 } 

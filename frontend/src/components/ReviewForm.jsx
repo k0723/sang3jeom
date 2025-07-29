@@ -99,8 +99,8 @@ export default function ReviewForm() {
                 uploadedImageUrl = presignedUrl.split('?')[0];
             }
 
-            // 임시 사용자 ID (실제로는 로그인 후 받아야 함)
-            const userId = 1; // 테스트용 임시 ID
+            // TODO: 실제 환경에서는 쿠키나 로컬 스토리지에서 JWT 토큰을 가져와야 합니다.
+            const token = localStorage.getItem('accessToken');
 
             await axios.post(
                 '/api/reviews',
@@ -112,7 +112,7 @@ export default function ReviewForm() {
                 {
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-User-ID': userId // 백엔드에서 요구하는 헤더
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
@@ -126,11 +126,7 @@ export default function ReviewForm() {
 
         } catch (error) {
             console.error("리뷰 등록 실패:", error);
-            console.error("응답 데이터:", error.response?.data);
-            console.error("응답 상태:", error.response?.status);
-            
-            const errorMsg = error.response?.data?.message || "알 수 없는 오류가 발생했습니다.";
-            alert(`리뷰 등록 실패: ${errorMsg}`);
+            alert("리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         } finally {
             setIsSubmitting(false);
         }
