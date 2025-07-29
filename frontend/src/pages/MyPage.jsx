@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 import axios from 'axios';
 import { 
   User, 
@@ -230,13 +231,16 @@ const MyPage = ({ setIsLoggedIn }) => {
         return;
       }
 
+      console.log("토큰 확인:", accessToken);
+      
       const res = await axios.get(
         'http://localhost:8080/users/me',
         { 
-          withCredentials: true,
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
         }
       );
       
@@ -252,6 +256,7 @@ const MyPage = ({ setIsLoggedIn }) => {
       }
     } catch (err) {
       console.error("사용자 정보 조회 실패:", err);
+      console.error("에러 응답:", err.response);
       if (err.response?.status === 401) {
         alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
         navigate('/login');
@@ -399,11 +404,15 @@ const MyPage = ({ setIsLoggedIn }) => {
         return;
       }
 
-      const userId = user?.id || 1;
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        alert("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
       console.log("AI 이미지 삭제:", { imageId, userId });
 
       // 방법 1: 쿼리 파라미터로 userId 전송
-      const res = await fetch(`/api/ai-images/${imageId}?userId=${userId}`, {
+      const res = await fetch(`http://localhost:8080/api/ai-images/${imageId}?userId=${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -417,7 +426,7 @@ const MyPage = ({ setIsLoggedIn }) => {
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await fetch(`/api/ai-images/${imageId}`, {
+        const res2 = await fetch(`http://localhost:8080/api/ai-images/${imageId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -451,10 +460,14 @@ const MyPage = ({ setIsLoggedIn }) => {
             return;
           }
 
-          const userId = user?.id || 1;
+          const userId = getUserIdFromToken();
+          if (!userId) {
+            console.log("유저 정보를 확인할 수 없습니다.");
+            return;
+          }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await fetch(`/api/ai-images/user/${userId}`, {
+          const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
             headers: { 
               "Authorization": `Bearer ${accessToken}`,
               "Content-Type": "application/json"
@@ -483,8 +496,12 @@ const MyPage = ({ setIsLoggedIn }) => {
   useEffect(() => {
     const fetchGoods = async () => {
       const accessToken = localStorage.getItem("accessToken");
-      const userId = user?.id || 1;
-      const res = await fetch(`/api/user-goods?userId=${userId}`, {
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        console.log("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
+      const res = await fetch(`http://localhost:8080/api/user-goods?userId=${userId}`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       if (res.ok) {

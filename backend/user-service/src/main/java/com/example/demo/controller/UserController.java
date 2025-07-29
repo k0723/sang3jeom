@@ -45,8 +45,25 @@ public class UserController {
     @Operation(summary = "단일 사용자 조회")
     @GetMapping("/me")
     public ResponseEntity<UserInfoDTO> getUser(Authentication authentication) {
-        Long userId = (Long) authentication.getDetails();
+        log.info("GET /me 호출됨");
+        log.info("Authentication: {}", authentication);
+        
+        // JWT 토큰에서 직접 userId 추출
+        Long userId = null;
+        if (authentication != null && authentication.getDetails() != null) {
+            userId = (Long) authentication.getDetails();
+            log.info("추출된 userId: {}", userId);
+        } else {
+            log.warn("authentication 또는 details가 null입니다");
+        }
+        
+        if (userId == null) {
+            log.error("userId를 추출할 수 없습니다");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
         UserInfoDTO dto = svc.findById(userId);
+        log.info("사용자 정보 조회 완료: {}", dto);
         return ResponseEntity.ok(dto);
     }
 

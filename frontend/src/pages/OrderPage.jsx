@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import Modal from "../components/Modal";
+import { getUserIdFromToken } from '../utils/jwtUtils';
 
 const OrderPage = () => {
   const location = useLocation();
@@ -154,9 +155,13 @@ const OrderPage = () => {
       goodsName,
       productName: product.name
     });
+    // JWT 토큰에서 userId 추출
+    const accessToken = localStorage.getItem("accessToken");
+    const userId = getUserIdFromToken();
+    
     const requestBody = {
       partnerOrderId: `ORDER_${Date.now()}`,
-      partnerUserId: `USER_1`, // TODO: 실제 로그인 유저ID로 대체
+      partnerUserId: `USER_${userId || 1}`, // 실제 로그인 유저ID 사용
       itemName: product.name,
       quantity: product.quantity || 1,
       totalAmount: product.price, // 총금액만 사용
