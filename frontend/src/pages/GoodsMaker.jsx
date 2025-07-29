@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Navbar from '../components/Navbar';
 import ReviewForm from '../components/ReviewForm.jsx';
 import ReviewSection from '../components/ReviewSection';
+import { getUserIdFromToken } from '../utils/jwtUtils';
 import { 
   ShoppingCart, 
   Download, 
@@ -157,8 +158,9 @@ export default function GoodsMaker() {
   const navigate = useNavigate();
   const fileInputRef = useRef();
   const [aiImages, setAiImages] = useState([]);
+  const [savedGoods, setSavedGoods] = useState(null); // 저장된 굿즈 정보
+  const [isSaved, setIsSaved] = useState(false); // 굿즈 저장 여부
   const [selectedImage, setSelectedImage] = useState(null);
-  const userId = 1; // 하드코딩된 유저 ID
   const abortControllerRef = useRef(null); // 이미지 로딩 중단용
 
   useEffect(() => {
@@ -188,19 +190,23 @@ export default function GoodsMaker() {
 
   useEffect(() => {
     const fetchImages = async () => {
-      console.log("AI 이미지 불러오기 시작, userId:", userId);
-      
-      // JWT 토큰 확인
+      // JWT 토큰에서 userId 추출
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
         console.log("JWT 토큰이 없습니다. AI 이미지를 불러올 수 없습니다.");
         return;
       }
 
-      console.log("AI 이미지 불러오기:", userId);
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        console.log("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      console.log("AI 이미지 불러오기 시작, userId:", userId);
       
       try {
-        const res = await fetch(`/api/ai-images/user/${userId}`, {
+        const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
           headers: { 
             "Authorization": `Bearer ${accessToken}`,
             "Content-Type": "application/json"
@@ -232,7 +238,13 @@ export default function GoodsMaker() {
       }
     };
     fetchImages();
-  }, [userId]);
+  }, []);
+
+  // 굿즈 타입이나 수량이 변경되면 저장 상태 초기화
+  useEffect(() => {
+    setIsSaved(false);
+    setSavedGoods(null);
+  }, [selected.key, quantity]);
 
   // 통합된 캔버스 렌더링 useEffect
   useEffect(() => {
@@ -662,28 +674,86 @@ export default function GoodsMaker() {
 
   // 결제창 띄우기 함수
   const handleOrder = () => {
-    navigate("/order", { state: { product: {
+    // 굿즈가 저장되었는지 확인
+    if (!isSaved || !savedGoods) {
+      alert("굿즈를 먼저 저장해주세요! '저장하기' 버튼을 클릭하여 굿즈를 저장한 후 주문할 수 있습니다.");
+      return;
+    }
+
+    // goodsId와 goodsName 매핑
+    const getGoodsIdAndName = (goodsKey) => {
+      switch (goodsKey) {
+        case "mug": return { goodsId: 1, goodsName: "AI 캐릭터 머그컵" };
+        case "tshirt": return { goodsId: 2, goodsName: "AI 캐릭터 티셔츠" };
+        case "ecobag": return { goodsId: 3, goodsName: "AI 캐릭터 에코백" };
+        case "case": return { goodsId: 4, goodsName: "AI 캐릭터 폰케이스" };
+        default: return { goodsId: 1, goodsName: "AI 캐릭터 상품" };
+      }
+    };
+
+    const { goodsId, goodsName } = getGoodsIdAndName(selected.key);
+    
+    // 디버깅을 위한 로그 추가
+    console.log("GoodsMaker - 선택된 굿즈 정보:", {
+      selectedKey: selected.key,
+      goodsId: goodsId,
+      goodsName: goodsName,
+      quantity: quantity,
+      savedGoods: savedGoods
+    });
+    
+    // sessionStorage에 goodsId와 goodsName 저장
+    sessionStorage.setItem("goods_id", goodsId.toString());
+    sessionStorage.setItem("goods_name", goodsName);
+    
+    // 저장 확인을 위한 로그
+    console.log("GoodsMaker - sessionStorage 저장 확인:", {
+      savedGoodsId: sessionStorage.getItem("goods_id"),
+      savedGoodsName: sessionStorage.getItem("goods_name")
+    });
+
+    // 저장된 굿즈의 이미지 URL 사용
+    const productData = {
       name: selected.label,
       desc: selected.description,
       option: `${quantity}개`,
       price: parseInt(selected.price.replace(/[^0-9]/g, '')),
-      image: uploadedImg || aiImg || selected.img,
+      image: savedGoods.imageUrl, // 저장된 굿즈의 S3 이미지 URL 사용
       quantity: quantity,
-    } } });
+      savedGoodsId: savedGoods.id // 저장된 굿즈 ID 추가
+    };
+    
+    console.log("OrderPage로 전달하는 데이터 (저장된 굿즈 사용):", productData);
+    
+    navigate("/order", { state: { product: productData } });
   };
 
   // 장바구니 추가 함수
   const handleAddToCart = async () => {
-    // TODO: 실제 로그인 유저ID로 대체 필요
-    const userId = 1;
+    // JWT 토큰에서 userId 추출
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
+    
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      alert("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    
     const goodsId = selected.key; // 실제 goodsId로 대체 필요
     const quantityValue = quantity;
     try {
       const res = await fetch("http://localhost:8080/cart", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
-          userId: 0,
+          userId: userId,
           goodsId: 0,
           quantity: Number(quantity)
         })
@@ -704,16 +774,22 @@ export default function GoodsMaker() {
   const handleSaveGoods = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const userId = 1; // 실제 로그인 유저 ID로 교체 필요
-    const goodsType = selected.key;
-    setImgLoaded(true);
-
-    // JWT 토큰
+    
+    // JWT 토큰에서 userId 추출
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       alert("로그인이 필요합니다.");
       return;
     }
+    
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      alert("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    
+    const goodsType = selected.key;
+    setImgLoaded(true);
 
     // 캔버스 이미지를 Blob으로 변환
     canvas.toBlob(async (blob) => {
@@ -727,7 +803,7 @@ export default function GoodsMaker() {
       formData.append('goodsType', goodsType);
       formData.append('file', file);
 
-      const res = await fetch('/api/user-goods', {
+      const res = await fetch('http://localhost:8080/api/user-goods', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -735,7 +811,19 @@ export default function GoodsMaker() {
         body: formData
       });
       if (res.ok) {
+        const savedGoodsData = await res.json();
         alert('굿즈가 저장되었습니다!');
+        console.log('저장된 굿즈:', savedGoodsData);
+        
+        // 저장된 굿즈 정보 상태 업데이트
+        setSavedGoods(savedGoodsData);
+        setIsSaved(true);
+        
+        // 세션스토리지에 굿즈 정보 저장 (결제 완료 후 사용)
+        sessionStorage.setItem("savedGoodsId", savedGoodsData.id);
+        sessionStorage.setItem("savedGoodsImageUrl", savedGoodsData.imageUrl);
+        
+        // 굿즈 저장 완료 후 현재 페이지에 머무름
       } else {
         const err = await res.json();
         alert('굿즈 저장 실패: ' + (err.message || '오류'));
@@ -829,24 +917,18 @@ export default function GoodsMaker() {
               {/* CTA Buttons */}
               <div className="space-y-3">
                 <motion.button
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  // onClick={handleOrder}
-                  onClick={() => navigate('/order', {
-                    state: {
-                      quantity,
-                      label: selected.label,
-                      description: selected.description,
-                      img: selected.img,
-                      price: calculatePrice(),
-                      minQuantity: selected.minQuantity,
-                      features: selected.features
-                    }
-                  })}
+                  className={`w-full py-3 rounded-lg font-semibold transition-colors duration-300 ${
+                    isSaved 
+                      ? "bg-blue-600 text-white hover:bg-blue-700" 
+                      : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  }`}
+                  whileHover={{ scale: isSaved ? 1.02 : 1 }}
+                  whileTap={{ scale: isSaved ? 0.98 : 1 }}
+                  onClick={handleOrder}
+                  disabled={!isSaved}
                 >
                   <ShoppingCart className="w-5 h-5 inline mr-2" />
-                  주문하기
+                  {isSaved ? "주문하기" : "굿즈를 먼저 저장해주세요"}
                 </motion.button>
                 <motion.button
                   className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"

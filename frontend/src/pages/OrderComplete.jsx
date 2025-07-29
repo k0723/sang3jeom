@@ -2,13 +2,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PostUploadModal from "../components/PostUploadModal";
 
 export default function OrderComplete() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
+  const [user, setUser] = useState(null);
+  const [aiImages, setAiImages] = useState([]);
   // location.state에서 필요한 정보 추출 (예시)
   const {
     orderId = "2020090519683953",
@@ -17,18 +19,63 @@ export default function OrderComplete() {
     address = "서울특별시 강남구 강남동 111-1번지 111호",
     email = "seul1234@gmail.com",
     amount = 64440,
-    image = null
+    image = null,
+    savedGoodsId,
+    savedGoodsImageUrl
   } = location.state || {};
+
+
+
+  useEffect(() => {
+    if (!showModal) return;
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    
+    // 사용자 정보 가져오기
+    fetch("http://localhost:8080/users/me", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(user => {
+        setUser(user);
+        
+        // AI 이미지 가져오기
+        return fetch(`http://localhost:8080/api/ai-images/user/${user.id}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+      })
+      .then(res => res.json())
+      .then(images => {
+        setAiImages(images);
+      })
+      .catch(() => {
+        setUser(null);
+        setAiImages([]);
+      });
+  }, [showModal]);
 
   // 게시글 업로드 후 커뮤니티로 이동
   const handlePost = async (post) => {
     try {
-      // 테스트용 하드코딩 - 추후 S3 버킷에서 가져올 예정
-      const response = await axios.post("http://localhost:8083/goods-posts", {
-        content: post.content,
-        imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
-        status: "ALL"
-      });
+      const token = localStorage.getItem("accessToken");
+      const response = await axios.post(
+        "http://localhost:8083/goods-posts",
+        {
+          content: post.content,
+          imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
+          status: "ALL"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       
       console.log("굿즈 게시물 생성 성공:", response.data);
       
@@ -103,7 +150,23 @@ export default function OrderComplete() {
           </div>
         </div>
       </div>
-      <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} />
+      {/* 모달: 유저 정보가 없으면 로딩, 있으면 모달 */}
+      {showModal && !user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center text-lg font-bold">유저 정보를 불러오는 중...</div>
+        </div>
+      )}
+      {showModal && user && (
+        <PostUploadModal 
+          open={showModal} 
+          onClose={() => setShowModal(false)} 
+          goodsImage={savedGoodsImageUrl || image} 
+          aiImages={aiImages}
+          savedGoodsId={savedGoodsId}
+          onPost={handlePost} 
+          user={user} 
+        />
+      )}
     </div>
   );
 } 
