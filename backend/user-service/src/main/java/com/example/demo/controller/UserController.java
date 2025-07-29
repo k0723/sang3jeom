@@ -75,7 +75,7 @@ public class UserController {
             Authentication authentication,
             @RequestBody @Valid UserPasswordDTO dto
     ) {
-        Long userId = (Long) authentication.getDetails();
+        Long userId = Long.valueOf(authentication.getName());
         svc.changePassword(userId, dto);
         return ResponseEntity.noContent().build();
     }
