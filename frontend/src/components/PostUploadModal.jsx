@@ -2,19 +2,19 @@ import React, { useState } from "react";
 
 const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", "🎉", "😆", "😇", "😺", "🐶", "🌸", "🍀", "🍕", "❤️", "⭐", "😜", "😏"];
 
-const DUMMY_IMAGES = [
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-  "https://images.unsplash.com/photo-1519125323398-675f0ddb6308",
-  "https://images.unsplash.com/photo-1465101046530-73398c7f28ca"
-];
-
-export default function PostUploadModal({ open, onClose, image: initialImage, onPost, user }) {
+export default function PostUploadModal({ open, onClose, goodsImage, aiImages, savedGoodsId, onPost, user }) {
   if (!open || !user) return null;
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("전체 공개");
-  // 이미지 선택: 더미 이미지 중 하나 선택
-  const [image, setImage] = useState(initialImage || DUMMY_IMAGES[0]);
+  // 굿즈 이미지를 기본으로 선택
+  const [image, setImage] = useState(goodsImage);
   const [showEmoji, setShowEmoji] = useState(false);
+  
+  // 굿즈 이미지와 AI 이미지가 있는지 확인
+  const hasGoodsImage = Boolean(goodsImage);
+  const hasAiImages = Boolean(aiImages && aiImages.length > 0);
+  
+
 
   // 더 이상 파일 업로드 핸들러 필요 없음
 
@@ -60,18 +60,41 @@ export default function PostUploadModal({ open, onClose, image: initialImage, on
           onChange={e => setContent(e.target.value)}
         />
         {/* 이미지 선택 썸네일 */}
-        <div className="w-full flex gap-2 mb-2 justify-center">
-          {DUMMY_IMAGES.map((img, idx) => (
-            <button
-              key={img}
-              type="button"
-              className={`border-2 rounded-lg p-1 ${image === img ? 'border-blue-500' : 'border-transparent'}`}
-              onClick={() => setImage(img)}
-              style={{ background: image === img ? '#e0f2fe' : 'transparent' }}
-            >
-              <img src={img} alt={`굿즈 이미지 ${idx+1}`} className="w-20 h-20 object-cover rounded-md" />
-            </button>
-          ))}
+        <div className="w-full mb-2">
+          {hasGoodsImage && (
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-gray-700 mb-2">📦 내가 만든 굿즈</p>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  className={`border-2 rounded-lg p-1 ${image === goodsImage ? 'border-blue-500' : 'border-transparent'}`}
+                  onClick={() => setImage(goodsImage)}
+                  style={{ background: image === goodsImage ? '#e0f2fe' : 'transparent' }}
+                >
+                  <img src={goodsImage} alt="내가 만든 굿즈" className="w-20 h-20 object-cover rounded-md" />
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {hasAiImages && (
+            <div className="mb-2">
+              <p className="text-sm font-semibold text-gray-700 mb-2">🎨 내 AI 캐릭터</p>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {aiImages.map((aiImage, idx) => (
+                  <button
+                    key={aiImage.id}
+                    type="button"
+                    className={`border-2 rounded-lg p-1 ${image === aiImage.imageUrl ? 'border-blue-500' : 'border-transparent'}`}
+                    onClick={() => setImage(aiImage.imageUrl)}
+                    style={{ background: image === aiImage.imageUrl ? '#e0f2fe' : 'transparent' }}
+                  >
+                    <img src={aiImage.imageUrl} alt={`AI 캐릭터 ${idx+1}`} className="w-20 h-20 object-cover rounded-md" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         {/* 선택된 이미지 미리보기 */}
         {image && (

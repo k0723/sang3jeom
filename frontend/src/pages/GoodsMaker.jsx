@@ -819,6 +819,10 @@ export default function GoodsMaker() {
         setSavedGoods(savedGoodsData);
         setIsSaved(true);
         
+        // 세션스토리지에 굿즈 정보 저장 (결제 완료 후 사용)
+        sessionStorage.setItem("savedGoodsId", savedGoodsData.id);
+        sessionStorage.setItem("savedGoodsImageUrl", savedGoodsData.imageUrl);
+        
         // 굿즈 저장 완료 후 현재 페이지에 머무름
       } else {
         const err = await res.json();

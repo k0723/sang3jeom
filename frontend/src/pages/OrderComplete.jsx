@@ -10,6 +10,7 @@ export default function OrderComplete() {
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
   const [user, setUser] = useState(null);
+  const [aiImages, setAiImages] = useState([]);
   // location.state에서 필요한 정보 추출 (예시)
   const {
     orderId = "2020090519683953",
@@ -18,21 +19,44 @@ export default function OrderComplete() {
     address = "서울특별시 강남구 강남동 111-1번지 111호",
     email = "seul1234@gmail.com",
     amount = 64440,
-    image = null
+    image = null,
+    savedGoodsId,
+    savedGoodsImageUrl
   } = location.state || {};
+
+
 
   useEffect(() => {
     if (!showModal) return;
     const token = localStorage.getItem("accessToken");
     if (!token) return;
+    
+    // 사용자 정보 가져오기
     fetch("http://localhost:8080/users/me", {
       headers: {
         "Authorization": `Bearer ${token}`
       }
     })
       .then(res => res.json())
-      .then(user => setUser(user))
-      .catch(() => setUser(null));
+      .then(user => {
+        setUser(user);
+        
+        // AI 이미지 가져오기
+        return fetch(`http://localhost:8080/api/ai-images/user/${user.id}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+      })
+      .then(res => res.json())
+      .then(images => {
+        setAiImages(images);
+      })
+      .catch(() => {
+        setUser(null);
+        setAiImages([]);
+      });
   }, [showModal]);
 
   // 게시글 업로드 후 커뮤니티로 이동
@@ -133,7 +157,15 @@ export default function OrderComplete() {
         </div>
       )}
       {showModal && user && (
-        <PostUploadModal open={showModal} onClose={() => setShowModal(false)} image={image} onPost={handlePost} user={user} />
+        <PostUploadModal 
+          open={showModal} 
+          onClose={() => setShowModal(false)} 
+          goodsImage={savedGoodsImageUrl || image} 
+          aiImages={aiImages}
+          savedGoodsId={savedGoodsId}
+          onPost={handlePost} 
+          user={user} 
+        />
       )}
     </div>
   );
