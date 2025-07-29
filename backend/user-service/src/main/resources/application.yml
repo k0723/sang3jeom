@@ -49,6 +49,7 @@ spring:
             scope:
               - profile_nickname  # 필요에 따라 email 등 추가
               - profile_image
+
             provider: kakao  
             redirect-uri:  http://localhost:8080/oauth2/redirection/{registrationId}
             authorization-grant-type: authorization_code 

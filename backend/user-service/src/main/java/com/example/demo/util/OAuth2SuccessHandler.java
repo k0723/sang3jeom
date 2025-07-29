@@ -37,6 +37,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler  {
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
         String provider = ((OAuth2AuthenticationToken)authentication)
                                                             .getAuthorizedClientRegistrationId();
+
+        Map<String, Object> attributes = oauth2User.getAttributes();
+        if (provider.equals("kakao")) {
+            Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+            String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+            Map<String, Object> profile = kakaoAccount != null ? (Map<String, Object>) kakaoAccount.get("profile") : null;
+            String nickname = profile != null ? (String) profile.get("nickname") : null;
+        }
         String email = oauth2User.getAttribute("email");
         String name  = oauth2User.getAttribute("name");
         String pic   = oauth2User.getAttribute("picture");
