@@ -63,7 +63,7 @@ const MyPage = ({ setIsLoggedIn }) => {
   const goodsNames = {
     'mug': 'AI 캐릭터 머그컵',
     'tshirt': 'AI 캐릭터 티셔츠',
-    'echobag': 'AI 캐릭터 에코백',
+    'ecobag': 'AI 캐릭터 에코백',
     'case': 'AI 캐릭터 폰케이스'
   };
 
@@ -88,8 +88,8 @@ const MyPage = ({ setIsLoggedIn }) => {
     { id: 'profile', name: '프로필', icon: User },
     { id: 'orders', name: '주문내역', icon: ShoppingBag },
     { id: 'ai', name: 'AI 캐릭터', icon: Star },
+    { id: 'favorites', name: '내 굿즈', icon: Heart },
     { id: 'posts', name: '내가 쓴 글', icon: Edit }, // 내가 쓴 글 탭 추가
-    { id: 'favorites', name: '찜한 상품', icon: Heart },
     { id: 'settings', name: '설정', icon: Settings }
   ];
 
@@ -175,6 +175,59 @@ const MyPage = ({ setIsLoggedIn }) => {
     }
   };
 
+  // 굿즈 가져오기
+  const fetchGoods = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      console.log("JWT 토큰이 없습니다. 굿즈를 불러올 수 없습니다.");
+      return;
+    }
+    
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      console.log("유저 정보를 확인할 수 없습니다.");
+      return;
+    }
+    
+    try {
+      console.log("굿즈 조회 API 호출 - userId:", userId);
+      const res = await fetch(`http://localhost:8080/api/user-goods?userId=${userId}`, {
+        headers: { 
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log("굿즈 조회 API 응답 상태:", res.status);
+      
+                        if (res.ok) {
+                    const data = await res.json();
+                    console.log("굿즈 데이터:", data);
+                    console.log("굿즈 개수:", data.length);
+                    
+                    // 각 굿즈의 상세 정보 로깅
+                    data.forEach((goods, index) => {
+                      console.log(`굿즈 ${index + 1}:`, {
+                        id: goods.id,
+                        goodsType: goods.goodsType,
+                        imageUrl: goods.imageUrl,
+                        createdAt: goods.createdAt,
+                        userId: goods.userId,
+                        userName: goods.userName
+                      });
+                    });
+                    
+                    setMyGoods(data);
+                  } else {
+                    console.error("굿즈 불러오기 실패:", res.status);
+                    const errorText = await res.text();
+                    console.error("에러 내용:", errorText);
+                  }
+    } catch (error) {
+      console.error("굿즈 불러오기 오류:", error);
+    }
+  };
+
   // 주문내역 가져오기
   const fetchOrders = async () => {
     try {
@@ -218,6 +271,12 @@ const MyPage = ({ setIsLoggedIn }) => {
   useEffect(() => {
     if (activeTab === 'posts' && user) {
       fetchMyPosts();
+    }
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (activeTab === 'favorites' && user) {
+      fetchGoods();
     }
   }, [activeTab, user]);
 
@@ -391,6 +450,46 @@ const MyPage = ({ setIsLoggedIn }) => {
     }
   };
 
+  // 굿즈 삭제 함수
+  const handleDeleteGoods = async (goodsId) => {
+    if (!window.confirm('정말로 이 굿즈를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("JWT 토큰이 없습니다.");
+        return;
+      }
+
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        alert("유저 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8080/api/user-goods/${goodsId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (response.ok) {
+        alert('굿즈가 성공적으로 삭제되었습니다.');
+        // 굿즈 목록에서 삭제된 굿즈 제거
+        setMyGoods(prevGoods => prevGoods.filter(goods => goods.id !== goodsId));
+      } else {
+        const errorData = await response.json();
+        alert('삭제 실패: ' + (errorData.message || '알 수 없는 오류가 발생했습니다.'));
+      }
+    } catch (error) {
+      console.error("굿즈 삭제 오류:", error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // AI 이미지 삭제 함수
   const handleDeleteAiImage = async (imageId) => {
     if (!window.confirm('정말로 이 AI 캐릭터를 삭제하시겠습니까?')) {
@@ -494,22 +593,9 @@ const MyPage = ({ setIsLoggedIn }) => {
   }, [activeTab, user, navigate]);
 
   useEffect(() => {
-    const fetchGoods = async () => {
-      const accessToken = localStorage.getItem("accessToken");
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        console.log("유저 정보를 확인할 수 없습니다.");
-        return;
-      }
-      const res = await fetch(`http://localhost:8080/api/user-goods?userId=${userId}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMyGoods(data);
-      }
-    };
-    fetchGoods();
+    if (user) {
+      fetchGoods();
+    }
   }, [user]);
 
 
@@ -761,7 +847,18 @@ const MyPage = ({ setIsLoggedIn }) => {
                             src={goods.imageUrl} 
                             alt={goodsNames[goods.goodsType] || goods.goodsType} 
                             className="w-full h-48 object-cover"
+                            onError={(e) => {
+                              console.error("이미지 로드 실패:", goods.imageUrl);
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
                           />
+                          <div 
+                            className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500 text-sm"
+                            style={{ display: 'none' }}
+                          >
+                            이미지를 불러올 수 없습니다
+                          </div>
                           <div className="p-4">
                             <h3 className="font-semibold text-gray-800 mb-2">
                               {goodsNames[goods.goodsType] || goods.goodsType}
@@ -781,7 +878,7 @@ const MyPage = ({ setIsLoggedIn }) => {
                               </button>
                             </div>
                             <div className="mt-2 text-xs text-gray-500">
-                              {new Date(goods.createdAt).toLocaleDateString()}
+                              {goods.createdAt ? new Date(goods.createdAt).toLocaleDateString('ko-KR') : '날짜 정보 없음'}
                             </div>
                           </div>
                         </div>
