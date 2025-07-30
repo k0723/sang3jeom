@@ -8,13 +8,13 @@ spring:
     allow-bean-definition-overriding: true  # Bean 중복 정의 허용 (임시)
 # DB 접속 정보
   datasource:
-#    url: jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    url: jdbc:mysql://127.0.0.1:3306/review-service?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+#    url: jdbc:mysql://127.0.0.1:3306/review-service?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     driver-class-name: com.mysql.cj.jdbc.Driver
-#    username: ${DATASOURCE_USERNAME}
-    username: root
-#    password: ${DATASOURCE_PASSWORD}
-    password: p@ssw0rd
+    username: ${DATASOURCE_USERNAME}
+#    username: root
+    password: ${DATASOURCE_PASSWORD}
+#    password: p@ssw0rd
 # JPA 설정
   jpa:
     hibernate:
