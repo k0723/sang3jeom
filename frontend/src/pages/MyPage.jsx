@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
 import { getUserIdFromToken } from '../utils/jwtUtils';
+import { reviewAPIService } from '../utils/reviewAPI';
 import axios from 'axios';
 import { 
   User, 
@@ -14,10 +15,12 @@ import {
   Star,
   Package,
   Truck,
-  CheckCircle
+  CheckCircle,
+  MessageSquare
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useNavigate, Link } from 'react-router-dom';
+import ReviewModal from '../components/ReviewModal';
 
 const MyPage = ({ setIsLoggedIn }) => {
 
@@ -48,8 +51,17 @@ const MyPage = ({ setIsLoggedIn }) => {
     totalOrders: 0,
     totalSpent: 0
   });
+  const [orderReviews, setOrderReviews] = useState({}); // 주문별 리뷰 정보 저장
   const [myPosts, setMyPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  
+  // 내 리뷰 관련 상태
+  const [myReviews, setMyReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // 리뷰 모달 관련 state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // 굿즈 타입별 가격 정보
   const goodsPrices = {
@@ -87,7 +99,8 @@ const MyPage = ({ setIsLoggedIn }) => {
   const tabs = [
     { id: 'profile', name: '프로필', icon: User },
     { id: 'orders', name: '주문내역', icon: ShoppingBag },
-    { id: 'ai', name: 'AI 캐릭터', icon: Star },
+    { id: 'reviews', name: '내 리뷰', icon: Star },
+    { id: 'ai', name: 'AI 캐릭터', icon: Camera },
     { id: 'favorites', name: '내 굿즈', icon: Heart },
     { id: 'posts', name: '내가 쓴 글', icon: Edit }, // 내가 쓴 글 탭 추가
     { id: 'settings', name: '설정', icon: Settings }
@@ -175,6 +188,24 @@ const MyPage = ({ setIsLoggedIn }) => {
     }
   };
 
+  // 내 리뷰 가져오기
+  const fetchMyReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const reviews = await reviewAPIService.getMyReviews();
+      console.log("내 리뷰:", reviews);
+      setMyReviews(reviews);
+    } catch (error) {
+      console.error("내 리뷰 불러오기 실패:", error);
+      if (error.response?.status === 401) {
+        console.log("인증 실패 - 로그인 페이지로 이동");
+        navigate('/login');
+      }
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   // 굿즈 가져오기
   const fetchGoods = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -246,6 +277,19 @@ const MyPage = ({ setIsLoggedIn }) => {
       
       console.log("주문내역:", response.data);
       setOrders(response.data);
+
+      // 주문 ID들을 추출하여 리뷰 정보 batch 조회
+      if (response.data && response.data.length > 0) {
+        const orderIds = response.data.map(order => order.id);
+        try {
+          const reviewsData = await reviewAPIService.getReviewsByOrderIds(orderIds);
+          console.log("주문별 리뷰 정보:", reviewsData);
+          setOrderReviews(reviewsData);
+        } catch (reviewError) {
+          console.error("리뷰 정보 조회 실패:", reviewError);
+          // 리뷰 조회 실패해도 주문내역은 표시
+        }
+      }
     } catch (error) {
       console.error("주문내역 불러오기 실패:", error);
       if (error.response?.status === 401) {
@@ -271,6 +315,12 @@ const MyPage = ({ setIsLoggedIn }) => {
   useEffect(() => {
     if (activeTab === 'posts' && user) {
       fetchMyPosts();
+    }
+  }, [activeTab, user]);
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && user) {
+      fetchMyReviews();
     }
   }, [activeTab, user]);
 
@@ -436,6 +486,90 @@ const MyPage = ({ setIsLoggedIn }) => {
       console.error("글 삭제 오류:", error);
       alert('삭제 중 오류가 발생했습니다.');
     }
+  };
+
+  // 리뷰 삭제 함수
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('정말로 이 리뷰를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await reviewAPIService.deleteReview(reviewId);
+      alert('리뷰가 성공적으로 삭제되었습니다.');
+      
+      // 리뷰 목록에서 삭제된 리뷰 제거
+      setMyReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
+      
+      // 주문 리뷰 정보에서도 제거
+      const deletedReview = myReviews.find(review => review.id === reviewId);
+      if (deletedReview && deletedReview.orderId) {
+        setOrderReviews(prev => {
+          const updated = { ...prev };
+          delete updated[deletedReview.orderId];
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error("리뷰 삭제 오류:", error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 리뷰 쓰기 버튼 클릭
+  const handleReviewWriteClick = (order) => {
+    setSelectedOrder(order);
+    setReviewModalOpen(true);
+  };
+
+  // 리뷰 제출
+  const handleReviewSubmit = async (reviewData) => {
+    try {
+      console.log('리뷰 제출:', {
+        orderId: selectedOrder.id,
+        ...reviewData
+      });
+      
+      // 실제 API 호출
+      const response = await reviewAPIService.createReview({
+        orderId: selectedOrder.id,
+        content: reviewData.content,
+        rating: reviewData.rating,
+        imageUrls: reviewData.imageUrls || []
+      });
+      
+      console.log('리뷰 생성 성공:', response);
+      alert('리뷰가 작성되었습니다!');
+      
+      // 리뷰 작성 후 주문 리뷰 정보 업데이트
+      setOrderReviews(prev => ({
+        ...prev,
+        [selectedOrder.id]: {
+          id: response.id,
+          content: reviewData.content,
+          rating: reviewData.rating,
+          createdAt: new Date().toISOString()
+        }
+      }));
+      
+      setReviewModalOpen(false);
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error('리뷰 작성 실패:', error);
+      if (error.response?.status === 400) {
+        alert('이미 리뷰가 작성된 주문입니다.');
+      } else if (error.response?.status === 404) {
+        alert('주문 정보를 찾을 수 없습니다.');
+      } else {
+        alert('리뷰 작성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
+  };
+
+  // 리뷰 모달 닫기
+  const handleReviewModalClose = () => {
+    setReviewModalOpen(false);
+    setSelectedOrder(null);
   };
 
   // 굿즈 삭제 함수
@@ -784,9 +918,29 @@ const MyPage = ({ setIsLoggedIn }) => {
                                   {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : '날짜 없음'}
                                 </p>
                               </div>
-                              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                                <StatusIcon className="w-4 h-4" />
-                                <span>{getStatusText(order.status)}</span>
+                              <div className="flex flex-col items-end space-y-2">
+                                <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                                  <StatusIcon className="w-4 h-4" />
+                                  <span>{getStatusText(order.status)}</span>
+                                </div>
+                                {/* 리뷰 상태에 따른 버튼 표시 */}
+                                {order.status === 'COMPLETED' && (
+                                  orderReviews[order.id] ? (
+                                    // 이미 리뷰가 작성된 경우
+                                    <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
+                                      <Star className="w-4 h-4 fill-current" />
+                                      <span>리뷰완료</span>
+                                    </div>
+                                  ) : (
+                                    // 리뷰가 아직 작성되지 않은 경우
+                                    <div className="flex items-center space-x-2 px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-sm font-medium cursor-pointer hover:bg-orange-200 transition-colors duration-200"
+                                      onClick={() => handleReviewWriteClick(order)}
+                                    >
+                                      <MessageSquare className="w-4 h-4" />
+                                      <span>리뷰작성</span>
+                                    </div>
+                                  )
+                                )}
                               </div>
                             </div>
                             <div className="space-y-2">
@@ -917,6 +1071,109 @@ const MyPage = ({ setIsLoggedIn }) => {
                             <span className="text-xs text-gray-500">
                               {new Date(img.createdAt).toLocaleDateString()}
                             </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 내 리뷰 Tab */}
+              {activeTab === 'reviews' && (
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">내 리뷰</h2>
+                  {reviewsLoading ? (
+                    <div className="text-center py-12">로딩 중...</div>
+                  ) : myReviews.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-500 mb-4">작성한 리뷰가 없습니다.</div>
+                      <Link 
+                        to="/community" 
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        주문 후 리뷰 작성하기
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {myReviews.map((review) => (
+                        <div key={review.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                          {/* 리뷰 헤더 */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`w-5 h-5 ${
+                                      star <= review.rating
+                                        ? 'text-yellow-400 fill-current'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                                <span className="ml-2 text-sm text-gray-600">
+                                  {review.rating}/5
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleDeleteReview(review.id)}
+                                className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 주문 정보 */}
+                          {review.orderInfo && (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                              <div className="text-sm text-gray-600 mb-1">주문상품</div>
+                              <div className="font-medium text-gray-800">
+                                {getGoodsDisplayName(review.orderInfo.goodsName)}
+                              </div>
+                              <div className="text-sm text-gray-500 mt-1">
+                                주문일: {new Date(review.orderInfo.orderDate).toLocaleDateString()}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 리뷰 내용 */}
+                          <div className="mb-4">
+                            <p className="text-gray-800 leading-relaxed">
+                              {review.content}
+                            </p>
+                          </div>
+
+                          {/* 리뷰 이미지 */}
+                          {review.imageUrls && review.imageUrls.length > 0 && (
+                            <div className="mb-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                {review.imageUrls.map((imageUrl, index) => (
+                                  <img
+                                    key={index}
+                                    src={imageUrl}
+                                    alt={`리뷰 이미지 ${index + 1}`}
+                                    className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                                    onClick={() => {
+                                      // 이미지 확대 보기 모달 (추후 구현)
+                                      window.open(imageUrl, '_blank');
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 리뷰 메타 정보 */}
+                          <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
+                            <span>작성일: {new Date(review.createdAt).toLocaleDateString()}</span>
+                            {review.updatedAt && review.updatedAt !== review.createdAt && (
+                              <span>수정일: {new Date(review.updatedAt).toLocaleDateString()}</span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1093,6 +1350,14 @@ const MyPage = ({ setIsLoggedIn }) => {
           </div>
         </div>
       </div>
+      
+      {/* 리뷰 모달 */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        order={selectedOrder}
+        onClose={handleReviewModalClose}
+        onSubmit={handleReviewSubmit}
+      />
     </div>
   );
 };

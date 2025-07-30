@@ -22,17 +22,21 @@ public class Review extends BaseTimeEntity{
     private String imageUrl;
 
     @Column(nullable = false)
-    private Double rating; // 1.0 ~ 5.0
+    private Double rating; // 0.5 ~ 5.0 (0.5 단위)
 
     @Column(nullable = false)
     private Long userId;
+    
+    @Column(nullable = false)
+    private Long orderId;
 
     @Builder
-    public Review(String content, Double rating, Long userId, String imageUrl) {
+    public Review(String content, Double rating, Long userId, String imageUrl, Long orderId) {
         this.content = content;
         this.rating = rating;
         this.userId = userId;
         this.imageUrl = imageUrl;
+        this.orderId = orderId;
     }
 
     public void update(String content, Double rating, String imageUrl) {
