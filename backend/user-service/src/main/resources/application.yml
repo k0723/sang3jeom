@@ -4,7 +4,7 @@ spring:
   port: ${SERVER_PORT:0} # 환경변수 없으면 0으로 랜덤
 
   redis:
-    host: localhost
+    host: redis
     port: 6379
 
 
