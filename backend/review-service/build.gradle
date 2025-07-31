@@ -42,10 +42,6 @@ dependencies {
 
 	// S3
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
-	
-	// AWS SDK v2 for S3 Presigner
-	implementation 'software.amazon.awssdk:s3:2.20.26'
-	implementation 'software.amazon.awssdk:auth:2.20.26'
 
 	// .env 파일 지원
 //	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
