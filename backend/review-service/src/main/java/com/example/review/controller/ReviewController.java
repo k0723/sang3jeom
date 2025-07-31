@@ -18,7 +18,12 @@ import java.util.Map;
 @RequestMapping("/api/reviews")
 @Slf4j
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(
+    origins = "http://localhost:5173",
+    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS},
+    allowedHeaders = "*",
+    allowCredentials = "true"
+)
 public class ReviewController {
 
     private final ReviewService reviewService;

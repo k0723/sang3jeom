@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const REVIEW_SERVICE_URL = '/api/reviews'; // 프록시를 통해 접근
+const REVIEW_SERVICE_URL = 'http://localhost:8084/api/reviews'; // 직접 백엔드 URL 사용
 
 // 기본 axios 인스턴스 생성
 const reviewAPI = axios.create({
@@ -22,7 +22,13 @@ const imageAPI = axios.create({
 reviewAPI.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    
+    // 전체 리뷰 조회는 토큰 없이도 가능
+    const isPublicEndpoint = 
+      config.method === 'get' && 
+      (config.url === '' || config.url.startsWith('?'));
+    
+    if (token && !isPublicEndpoint) {
       config.headers.Authorization = `Bearer ${token}`;
       // Review 서비스는 X-User-ID 헤더를 기대하므로 임시로 토큰에서 추출
       // 실제로는 API Gateway에서 처리해야 함
@@ -33,6 +39,15 @@ reviewAPI.interceptors.request.use(
         console.warn('JWT 파싱 실패:', error);
       }
     }
+    
+    console.log('리뷰 API 요청:', {
+      method: config.method,
+      url: config.url,
+      hasToken: !!token,
+      isPublic: isPublicEndpoint,
+      headers: config.headers
+    });
+    
     return config;
   },
   (error) => {
@@ -91,21 +106,20 @@ export const reviewAPIService = {
     try {
       const { page = 0, size = 10, productId, sortBy = 'createdAt', sortDir = 'desc' } = params;
       
-      let url = '';
-      const queryParams = new URLSearchParams({
+      // axios params 객체를 사용하여 자동 인코딩 방지
+      const requestParams = {
         page: page.toString(),
         size: size.toString(),
-        sortBy,
-        sortDir
-      });
+        sort: `${sortBy},${sortDir}`  // Spring Data Pageable 형식
+      };
       
       if (productId) {
-        queryParams.append('productId', productId.toString());
+        requestParams.productId = productId.toString();
       }
       
-      url += `?${queryParams.toString()}`;
+      console.log('리뷰 API 요청 params:', requestParams);
       
-      const response = await reviewAPI.get(url);
+      const response = await reviewAPI.get('', { params: requestParams });
       return response.data;
     } catch (error) {
       console.error('리뷰 목록 조회 실패:', error);

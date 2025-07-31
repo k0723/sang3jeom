@@ -187,18 +187,70 @@ public class ReviewService {
 //        return new ReviewResponseDTO(review);
 //    }
 
-    // 리뷰 조회
+    // 리뷰 조회 - 사용자 이름 포함
     @Transactional(readOnly = true)
     public Page<ReviewResponseDTO> findReviewsByPage(Pageable pageable) {
         log.debug("📋 리뷰 목록 조회 | page: {} | size: {} | sort: {}", 
                 pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         
-        Page<ReviewResponseDTO> reviews = reviewRepository.findAll(pageable).map(ReviewResponseDTO::new);
+        Page<Review> reviewPage = reviewRepository.findAll(pageable);
+        
+        Page<ReviewResponseDTO> reviews = reviewPage.map(review -> {
+            String userName = getUserName(review.getUserId());
+            return new ReviewResponseDTO(review, userName);
+        });
         
         log.info("📊 리뷰 목록 조회 완료 | 총 {}건 | 현재 페이지: {}/{}", 
                 reviews.getTotalElements(), reviews.getNumber() + 1, reviews.getTotalPages());
         
         return reviews;
+    }
+    
+    /**
+     * 사용자 이름 조회 (현재는 Mock 데이터 중심)
+     * User Service 개발 완료 후 실제 연동 예정
+     */
+    private String getUserName(Long userId) {
+        // 현재는 다른 개발자가 User Service 작업 중이므로 Mock 데이터 사용
+        if (!userVerificationEnabled) {
+            log.debug("🧪 Mock 모드 - 가상 사용자 이름 생성 | userId: {}", userId);
+            return generateMockUserName(userId);
+        }
+        
+        // User Service 호출 시도 (실패 시 Fallback)
+        try {
+            log.debug("👤 User Service 호출 시도 | userId: {}", userId);
+            UserInfoDTO userInfo = userServiceClient.getUserById(userId);
+            
+            if (userInfo != null && userInfo.getName() != null) {
+                log.debug("✅ 실제 사용자 이름 조회 성공 | userId: {} | name: {}", userId, userInfo.getName());
+                return userInfo.getName();
+            }
+            
+        } catch (Exception e) {
+            log.debug("⚠️ User Service 호출 실패 - Fallback 사용 | userId: {} | error: {}", userId, e.getMessage());
+        }
+        
+        // Fallback: Mock 사용자 이름 생성
+        return generateMockUserName(userId);
+    }
+    
+    /**
+     * Mock 사용자 이름 생성 (개발/테스트용)
+     */
+    private String generateMockUserName(Long userId) {
+        // 다양한 Mock 사용자 이름 패턴
+        String[] mockNames = {
+            "김민수", "이영희", "박철수", "최수진", "정다영", 
+            "황준호", "임서연", "조민우", "한지은", "신동혁"
+        };
+        
+        // userId를 기반으로 일관된 이름 할당
+        int nameIndex = (int) (userId % mockNames.length);
+        String mockName = mockNames[nameIndex];
+        
+        log.debug("🎭 Mock 사용자 이름 생성 | userId: {} | mockName: {}", userId, mockName);
+        return mockName;
     }
 
     // === 주문별 리뷰 관련 메서드들 ===
