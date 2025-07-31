@@ -162,4 +162,19 @@ public class ReviewController {
                 userId, reviews.size());
         return ResponseEntity.ok(reviews);
     }
+
+    /**
+     * 주문 정보를 포함한 사용자의 모든 리뷰 조회 (마이페이지용)
+     */
+    @GetMapping("/my-reviews-with-order-info")
+    public ResponseEntity<List<ReviewWithOrderInfoDTO>> getMyReviewsWithOrderInfo(
+            @RequestHeader("X-User-ID") Long userId) {
+        log.info("📋 [GET] 주문 정보 포함 내 리뷰 목록 조회 | userId: {}", userId);
+        
+        List<ReviewWithOrderInfoDTO> reviews = reviewService.getMyReviewsWithOrderInfo(userId);
+        
+        log.info("✅ [GET] 주문 정보 포함 내 리뷰 목록 조회 응답 | userId: {} | 리뷰 수: {}개", 
+                userId, reviews.size());
+        return ResponseEntity.ok(reviews);
+    }
 }

@@ -62,6 +62,7 @@ const MyPage = ({ setIsLoggedIn }) => {
   // 리뷰 모달 관련 state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [editingReview, setEditingReview] = useState(null); // 수정할 리뷰 정보
 
   // 굿즈 타입별 가격 정보
   const goodsPrices = {
@@ -192,17 +193,134 @@ const MyPage = ({ setIsLoggedIn }) => {
   const fetchMyReviews = async () => {
     try {
       setReviewsLoading(true);
+      console.log("🔄 fetchMyReviews 시작");
+      
+      // 먼저 주문 정보를 포함한 리뷰 API 시도
+      try {
+        const reviewsWithOrderInfo = await reviewAPIService.getMyReviewsWithOrderInfo();
+        console.log("✅ 주문 정보 포함 리뷰 API 성공:", reviewsWithOrderInfo);
+        setMyReviews(reviewsWithOrderInfo);
+        return;
+      } catch (apiError) {
+        console.log("⚠️ 주문 정보 포함 API 실패, 수동 매칭 시도:", apiError.message);
+      }
+      
+      // 백엔드 API가 없는 경우 수동으로 매칭
+      console.log("🔄 기본 리뷰 API 호출 중...");
       const reviews = await reviewAPIService.getMyReviews();
-      console.log("내 리뷰:", reviews);
-      setMyReviews(reviews);
+      console.log("📝 내 리뷰 원본 데이터:", reviews);
+      console.log("📊 리뷰 개수:", reviews?.length || 0);
+      
+      if (!reviews || reviews.length === 0) {
+        console.log("ℹ️ 리뷰가 없습니다.");
+        setMyReviews([]);
+        return;
+      }
+      
+      // 각 리뷰의 orderId 확인
+      reviews.forEach((review, index) => {
+        console.log(`🔍 리뷰 ${index + 1}:`, {
+          id: review.id,
+          orderId: review.orderId,
+          orderIdType: typeof review.orderId,
+          content: review.content?.substring(0, 30) + '...',
+          rating: review.rating,
+          imageUrls: review.imageUrls?.length || 0
+        });
+      });
+      
+      // 주문 정보와 매칭하기 위해 주문 내역 가져오기
+      const token = localStorage.getItem("accessToken");
+      console.log("🔑 액세스 토큰 존재:", !!token);
+      
+      if (token) {
+        try {
+          console.log("🔄 주문 내역 API 호출 중...");
+          const ordersResponse = await axios.get('http://localhost:8082/orders/my-orders', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          console.log("📦 주문 내역 원본 데이터:", ordersResponse.data);
+          console.log("📊 주문 개수:", ordersResponse.data?.length || 0);
+          
+          if (!ordersResponse.data || ordersResponse.data.length === 0) {
+            console.log("ℹ️ 주문 내역이 없습니다.");
+            setMyReviews(reviews);
+            return;
+          }
+          
+          const ordersMap = {};
+          ordersResponse.data.forEach(order => {
+            // 다양한 타입으로 매핑
+            ordersMap[order.id] = order;
+            ordersMap[String(order.id)] = order;
+            ordersMap[Number(order.id)] = order;
+            
+            console.log(`🗺️ 주문 매핑: ${order.id} (타입: ${typeof order.id}) →`, {
+              goodsName: order.goodsName,
+              orderDate: order.orderDate,
+              status: order.status,
+              price: order.price
+            });
+          });
+          
+          console.log("🗺️ 최종 주문 매핑 객체 키들:", Object.keys(ordersMap));
+          
+          // 리뷰에 주문 정보 추가
+          const reviewsWithOrderInfo = reviews.map(review => {
+            const orderId = review.orderId;
+            const orderInfo = ordersMap[orderId] || ordersMap[String(orderId)] || ordersMap[Number(orderId)];
+            
+            console.log(`🔗 매칭 시도: 리뷰 ID ${review.id} (orderId: ${orderId}, 타입: ${typeof orderId}) →`, {
+              found: !!orderInfo,
+              orderInfo: orderInfo ? {
+                id: orderInfo.id,
+                goodsName: orderInfo.goodsName,
+                status: orderInfo.status
+              } : null
+            });
+            
+            return {
+              ...review,
+              orderInfo: orderInfo
+            };
+          });
+          
+          console.log("✅ 주문 정보가 추가된 최종 리뷰:", reviewsWithOrderInfo);
+          setMyReviews(reviewsWithOrderInfo);
+        } catch (orderError) {
+          console.error("❌ 주문 정보 가져오기 실패:", orderError);
+          console.error("❌ 주문 API 에러 상세:", {
+            status: orderError.response?.status,
+            statusText: orderError.response?.statusText,
+            data: orderError.response?.data,
+            message: orderError.message
+          });
+          // 주문 정보 없이라도 리뷰는 표시
+          setMyReviews(reviews);
+        }
+      } else {
+        console.warn("⚠️ 토큰이 없어서 주문 정보를 가져올 수 없습니다.");
+        setMyReviews(reviews);
+      }
     } catch (error) {
-      console.error("내 리뷰 불러오기 실패:", error);
+      console.error("❌ 내 리뷰 불러오기 실패:", error);
+      console.error("❌ 리뷰 API 에러 상세:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
       if (error.response?.status === 401) {
-        console.log("인증 실패 - 로그인 페이지로 이동");
+        console.log("🔐 인증 실패 - 로그인 페이지로 이동");
         navigate('/login');
       }
     } finally {
       setReviewsLoading(false);
+      console.log("✅ fetchMyReviews 완료");
     }
   };
 
@@ -263,48 +381,124 @@ const MyPage = ({ setIsLoggedIn }) => {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true);
+      console.log("🔄 fetchOrders 시작");
+      
       const token = localStorage.getItem("accessToken");
+      console.log("🔑 액세스 토큰 존재:", !!token);
+      
       if (!token) {
-        console.log("JWT 토큰이 없습니다. 주문내역을 불러올 수 없습니다.");
+        console.log("❌ JWT 토큰이 없습니다. 주문내역을 불러올 수 없습니다.");
         return;
       }
 
+      console.log("🔄 주문내역 API 호출 중...");
       const response = await axios.get('http://localhost:8082/orders/my-orders', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log("주문내역:", response.data);
+      console.log("📦 주문내역 API 응답:", response.data);
+      console.log("📊 주문 개수:", response.data?.length || 0);
       setOrders(response.data);
 
       // 주문 ID들을 추출하여 리뷰 정보 batch 조회
       if (response.data && response.data.length > 0) {
         const orderIds = response.data.map(order => order.id);
+        console.log("🔍 리뷰 조회할 주문 IDs:", orderIds);
+        
         try {
+          console.log("🔄 리뷰 batch 조회 중...");
           const reviewsData = await reviewAPIService.getReviewsByOrderIds(orderIds);
-          console.log("주문별 리뷰 정보:", reviewsData);
-          setOrderReviews(reviewsData);
+          console.log("📝 주문별 리뷰 정보 원본:", reviewsData);
+          
+          // 리뷰 데이터가 올바른 형태인지 확인하고 정리
+          const cleanedReviewsData = {};
+          if (reviewsData && typeof reviewsData === 'object') {
+            Object.keys(reviewsData).forEach(orderId => {
+              const review = reviewsData[orderId];
+              // 리뷰가 실제로 존재하고 유효한 ID를 가지고 있는 경우만 추가
+              if (review && review.id && review.id !== null && review.id !== undefined) {
+                cleanedReviewsData[orderId] = review;
+                console.log(`✅ 주문 ${orderId}에 대한 유효한 리뷰 발견:`, {
+                  reviewId: review.id,
+                  rating: review.rating,
+                  content: review.content?.substring(0, 30) + '...'
+                });
+              } else {
+                console.log(`❌ 주문 ${orderId}에 대한 리뷰 없음 또는 무효`);
+              }
+            });
+          }
+          
+          console.log("📝 정리된 주문별 리뷰 정보:", cleanedReviewsData);
+          
+          // 기존 orderReviews와 새로 가져온 리뷰 정보를 병합 (기존 것 우선)
+          setOrderReviews(prev => {
+            const merged = { ...cleanedReviewsData, ...prev };
+            console.log("🔄 기존 리뷰 상태 보존하며 병합:", {
+              previous: prev,
+              newData: cleanedReviewsData,
+              merged: merged
+            });
+            return merged;
+          });
         } catch (reviewError) {
-          console.error("리뷰 정보 조회 실패:", reviewError);
-          // 리뷰 조회 실패해도 주문내역은 표시
+          console.error("❌ 리뷰 정보 조회 실패:", reviewError);
+          console.error("❌ 리뷰 API 에러 상세:", {
+            status: reviewError.response?.status,
+            statusText: reviewError.response?.statusText,
+            data: reviewError.response?.data,
+            message: reviewError.message
+          });
+          // 리뷰 조회 실패 시에도 기존 상태는 유지
         }
+      } else {
+        console.log("ℹ️ 주문내역이 없어서 리뷰 조회를 건너뜁니다.");
+        // 주문이 없어도 기존 리뷰 상태는 유지
       }
     } catch (error) {
-      console.error("주문내역 불러오기 실패:", error);
+      console.error("❌ 주문내역 불러오기 실패:", error);
+      console.error("❌ 주문 API 에러 상세:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
       if (error.response?.status === 401) {
-        console.log("인증 실패 - 로그인 페이지로 이동");
+        console.log("🔐 인증 실패 - 로그인 페이지로 이동");
         navigate('/login');
       }
     } finally {
       setOrdersLoading(false);
+      console.log("✅ fetchOrders 완료");
     }
   };
 
   useEffect(() => {
+    // 디버깅: 컴포넌트 마운트 시 상태 확인
+    console.log("🔄 MyPage 컴포넌트 마운트");
+    console.log("🔑 localStorage accessToken:", !!localStorage.getItem("accessToken"));
+    console.log("🔑 Token 내용 (앞 20자):", localStorage.getItem("accessToken")?.substring(0, 20));
+    
     handleUserInfo();
     fetchOrderStats(); // 주문 통계도 함께 가져오기
-  }, [])
+  }, []);
+
+  // orderReviews 상태 변경 감지
+  useEffect(() => {
+    console.log('📊 orderReviews 상태 변경:', orderReviews);
+    console.log('📊 orderReviews 키들:', Object.keys(orderReviews));
+    // 디버깅용 전역 변수
+    window.orderReviewsDebug = orderReviews;
+  }, [orderReviews]);
+
+  // orders 상태 변경 감지
+  useEffect(() => {
+    console.log('📦 orders 상태 변경:', orders);
+    window.ordersDebug = orders;
+  }, [orders]);
 
   useEffect(() => {
     if (activeTab === 'orders' && user) {
@@ -519,49 +713,194 @@ const MyPage = ({ setIsLoggedIn }) => {
   // 리뷰 쓰기 버튼 클릭
   const handleReviewWriteClick = (order) => {
     setSelectedOrder(order);
+    setEditingReview(null); // 새 리뷰 작성
     setReviewModalOpen(true);
+  };
+
+  // 리뷰 수정 버튼 클릭
+  const handleReviewEditClick = async (order) => {
+    try {
+      // 실제 리뷰 정보를 API에서 가져오기
+      const reviewData = await reviewAPIService.getReviewByOrderId(order.id);
+      console.log('가져온 리뷰 데이터:', reviewData);
+      
+      setSelectedOrder(order);
+      setEditingReview(reviewData); // API에서 가져온 완전한 리뷰 정보 설정
+      setReviewModalOpen(true);
+    } catch (error) {
+      console.error('리뷰 정보 가져오기 실패:', error);
+      // API 호출 실패 시 기존 방식으로 폴백
+      const existingReview = orderReviews[order.id];
+      setSelectedOrder(order);
+      setEditingReview(existingReview);
+      setReviewModalOpen(true);
+    }
+  };
+
+  // 리뷰 삭제 버튼 클릭
+  const handleReviewDeleteClick = async (order) => {
+    if (!window.confirm('정말로 이 리뷰를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      // 먼저 실제 리뷰 정보를 가져와서 ID 확인
+      let reviewToDelete = orderReviews[order.id];
+      
+      if (!reviewToDelete || !reviewToDelete.id) {
+        console.log('리뷰 ID가 없어서 API에서 가져오는 중...');
+        try {
+          reviewToDelete = await reviewAPIService.getReviewByOrderId(order.id);
+          console.log('API에서 가져온 리뷰:', reviewToDelete);
+        } catch (fetchError) {
+          console.error('리뷰 정보 가져오기 실패:', fetchError);
+          alert('삭제할 리뷰 정보를 찾을 수 없습니다.');
+          return;
+        }
+      }
+
+      if (!reviewToDelete.id) {
+        alert('리뷰 ID를 찾을 수 없습니다.');
+        return;
+      }
+
+      console.log('삭제할 리뷰 ID:', reviewToDelete.id);
+      await reviewAPIService.deleteReview(reviewToDelete.id);
+      alert('리뷰가 성공적으로 삭제되었습니다.');
+      
+      // 주문 리뷰 정보에서 완전히 삭제 (undefined가 아닌 삭제)
+      setOrderReviews(prev => {
+        const updated = { ...prev };
+        delete updated[order.id];
+        console.log('✅ orderReviews에서 주문', order.id, '삭제 완료:', updated);
+        return updated;
+      });
+      
+      // 주문 목록 새로고침하지 않음 - 상태 업데이트만으로 충분
+      
+    } catch (error) {
+      console.error("리뷰 삭제 오류:", error);
+      if (error.response?.status === 404) {
+        alert('삭제할 리뷰를 찾을 수 없습니다.');
+      } else if (error.response?.status === 403) {
+        alert('리뷰를 삭제할 권한이 없습니다.');
+      } else {
+        alert('리뷰 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
   };
 
   // 리뷰 제출
   const handleReviewSubmit = async (reviewData) => {
     try {
-      console.log('리뷰 제출:', {
+      console.log('🔄 리뷰 제출 시작:', {
         orderId: selectedOrder.id,
+        isEditing: !!editingReview,
         ...reviewData
       });
       
-      // 실제 API 호출
-      const response = await reviewAPIService.createReview({
-        orderId: selectedOrder.id,
-        content: reviewData.content,
-        rating: reviewData.rating,
-        imageUrls: reviewData.imageUrls || []
-      });
+      let response;
       
-      console.log('리뷰 생성 성공:', response);
-      alert('리뷰가 작성되었습니다!');
-      
-      // 리뷰 작성 후 주문 리뷰 정보 업데이트
-      setOrderReviews(prev => ({
-        ...prev,
-        [selectedOrder.id]: {
-          id: response.id,
+      if (editingReview) {
+        // 리뷰 수정
+        response = await reviewAPIService.updateReview(editingReview.id, {
           content: reviewData.content,
           rating: reviewData.rating,
-          createdAt: new Date().toISOString()
-        }
-      }));
+          imageUrls: reviewData.imageUrls || []
+        });
+        console.log('✅ 리뷰 수정 성공:', response);
+        alert('리뷰가 수정되었습니다!');
+      } else {
+        // 새 리뷰 작성
+        response = await reviewAPIService.createReview({
+          orderId: selectedOrder.id,
+          content: reviewData.content,
+          rating: reviewData.rating,
+          imageUrls: reviewData.imageUrls || []
+        });
+        console.log('✅ 리뷰 생성 성공 - 전체 응답:', response);
+        console.log('✅ 응답 타입:', typeof response);
+        console.log('✅ 응답 키들:', Object.keys(response || {}));
+        console.log('✅ response.id:', response?.id);
+        console.log('✅ response.reviewId:', response?.reviewId);
+        console.log('✅ response.data:', response?.data);
+        alert('리뷰가 작성되었습니다!');
+      }
+      
+      // 리뷰 작성/수정 후 주문 리뷰 정보 업데이트 (유효한 리뷰 ID 확인)
+      if (response && (response.id || response.reviewId || response.data?.id)) {
+        const reviewId = response.id || response.reviewId || response.data?.id;
+        const newReviewData = {
+          id: reviewId,
+          content: reviewData.content,
+          rating: reviewData.rating,
+          imageUrls: reviewData.imageUrls || [],
+          createdAt: editingReview?.createdAt || response.createdAt || new Date().toISOString(),
+          updatedAt: response.updatedAt || new Date().toISOString()
+        };
+        
+        console.log('🔄 orderReviews 상태 업데이트:', {
+          orderId: selectedOrder.id,
+          reviewData: newReviewData
+        });
+        
+        setOrderReviews(prev => {
+          const updated = {
+            ...prev,
+            [selectedOrder.id]: newReviewData
+          };
+          console.log('✅ orderReviews 업데이트 완료:', updated);
+          
+          // 디버깅용: 전역 변수에도 저장
+          window.orderReviewsAfterUpdate = updated;
+          window.testOrderId = selectedOrder.id;
+          
+          return updated;
+        });
+      } else {
+        console.warn('⚠️ 응답에서 리뷰 ID를 찾을 수 없습니다:', response);
+        
+        // ID가 없어도 강제로 상태 업데이트 (UI 개선용)
+        const tempReviewData = {
+          id: `temp_${Date.now()}`, // 임시 ID
+          content: reviewData.content,
+          rating: reviewData.rating,
+          imageUrls: reviewData.imageUrls || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        console.log('⚠️ 임시 리뷰 데이터로 상태 업데이트:', tempReviewData);
+        
+        setOrderReviews(prev => {
+          const updated = {
+            ...prev,
+            [selectedOrder.id]: tempReviewData
+          };
+          console.log('⚠️ 임시 데이터로 orderReviews 업데이트:', updated);
+          return updated;
+        });
+      }
       
       setReviewModalOpen(false);
       setSelectedOrder(null);
+      setEditingReview(null);
+      
+      // 자동 새로고침 제거 - 상태 업데이트만으로 충분
+      // setTimeout(() => {
+      //   console.log('🔄 주문 목록 새로고침 시작');
+      //   fetchOrders();
+      // }, 500);
+      
+      console.log('✅ 리뷰 제출 완료');
     } catch (error) {
-      console.error('리뷰 작성 실패:', error);
+      console.error('❌ 리뷰 작성/수정 실패:', error);
       if (error.response?.status === 400) {
-        alert('이미 리뷰가 작성된 주문입니다.');
+        alert(editingReview ? '리뷰 수정에 실패했습니다.' : '이미 리뷰가 작성된 주문입니다.');
       } else if (error.response?.status === 404) {
         alert('주문 정보를 찾을 수 없습니다.');
       } else {
-        alert('리뷰 작성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        alert(`리뷰 ${editingReview ? '수정' : '작성'}에 실패했습니다. 잠시 후 다시 시도해주세요.`);
       }
     }
   };
@@ -570,6 +909,7 @@ const MyPage = ({ setIsLoggedIn }) => {
   const handleReviewModalClose = () => {
     setReviewModalOpen(false);
     setSelectedOrder(null);
+    setEditingReview(null);
   };
 
   // 굿즈 삭제 함수
@@ -924,23 +1264,46 @@ const MyPage = ({ setIsLoggedIn }) => {
                                   <span>{getStatusText(order.status)}</span>
                                 </div>
                                 {/* 리뷰 상태에 따른 버튼 표시 */}
-                                {order.status === 'COMPLETED' && (
-                                  orderReviews[order.id] ? (
-                                    // 이미 리뷰가 작성된 경우
-                                    <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
-                                      <Star className="w-4 h-4 fill-current" />
-                                      <span>리뷰완료</span>
+                                {order.status === 'COMPLETED' && (() => {
+                                  const hasReview = orderReviews[order.id] && orderReviews[order.id].id;
+                                  console.log(`🔍 주문 ${order.id} 리뷰 상태 체크:`, {
+                                    orderReviews: orderReviews[order.id],
+                                    hasReview,
+                                    reviewId: orderReviews[order.id]?.id
+                                  });
+                                  
+                                  return hasReview ? (
+                                    // 실제로 리뷰가 존재하는 경우만 수정/삭제 버튼 표시
+                                    <div className="flex flex-col space-y-2">
+                                      <button
+                                        onClick={() => handleReviewEditClick(order)}
+                                        className="flex items-center space-x-1 px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium cursor-pointer hover:bg-blue-200 transition-colors duration-200"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        <span>리뷰수정</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleReviewDeleteClick(order)}
+                                        className="flex items-center space-x-1 px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium cursor-pointer hover:bg-red-200 transition-colors duration-200"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>리뷰삭제</span>
+                                      </button>
                                     </div>
                                   ) : (
-                                    // 리뷰가 아직 작성되지 않은 경우
+                                    // 리뷰가 없는 경우 리뷰작성 버튼만 표시
                                     <div className="flex items-center space-x-2 px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-sm font-medium cursor-pointer hover:bg-orange-200 transition-colors duration-200"
                                       onClick={() => handleReviewWriteClick(order)}
                                     >
                                       <MessageSquare className="w-4 h-4" />
                                       <span>리뷰작성</span>
                                     </div>
-                                  )
-                                )}
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="space-y-2">
@@ -1129,7 +1492,7 @@ const MyPage = ({ setIsLoggedIn }) => {
                           </div>
 
                           {/* 주문 정보 */}
-                          {review.orderInfo && (
+                          {review.orderInfo ? (
                             <div className="bg-gray-50 rounded-lg p-3 mb-4">
                               <div className="text-sm text-gray-600 mb-1">주문상품</div>
                               <div className="font-medium text-gray-800">
@@ -1138,15 +1501,27 @@ const MyPage = ({ setIsLoggedIn }) => {
                               <div className="text-sm text-gray-500 mt-1">
                                 주문일: {new Date(review.orderInfo.orderDate).toLocaleDateString()}
                               </div>
+                              <div className="text-sm text-gray-500">
+                                주문번호: ORD00{review.orderInfo.id}
+                              </div>
+                            </div>
+                          ) : review.orderId ? (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                              <div className="text-sm text-gray-600 mb-1">주문 정보</div>
+                              <div className="text-sm text-gray-500">
+                                주문 ID: {review.orderId}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-1">
+                                상세 주문 정보를 불러오지 못했습니다.
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                              <div className="text-sm text-gray-500">
+                                주문 정보를 찾을 수 없습니다.
+                              </div>
                             </div>
                           )}
-
-                          {/* 리뷰 내용 */}
-                          <div className="mb-4">
-                            <p className="text-gray-800 leading-relaxed">
-                              {review.content}
-                            </p>
-                          </div>
 
                           {/* 리뷰 이미지 */}
                           {review.imageUrls && review.imageUrls.length > 0 && (
@@ -1167,6 +1542,13 @@ const MyPage = ({ setIsLoggedIn }) => {
                               </div>
                             </div>
                           )}
+
+                          {/* 리뷰 내용 */}
+                          <div className="mb-4">
+                            <p className="text-gray-800 leading-relaxed">
+                              {review.content}
+                            </p>
+                          </div>
 
                           {/* 리뷰 메타 정보 */}
                           <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-gray-100">
@@ -1355,6 +1737,7 @@ const MyPage = ({ setIsLoggedIn }) => {
       <ReviewModal
         isOpen={reviewModalOpen}
         order={selectedOrder}
+        existingReview={editingReview}
         onClose={handleReviewModalClose}
         onSubmit={handleReviewSubmit}
       />

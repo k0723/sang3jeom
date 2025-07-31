@@ -1,11 +1,11 @@
-package com.example.review.client;
+package com.example.review.dto;
 
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class UserInfoDTO {
+public class ReviewWithUserInfoDTO {
     private Long id;
     private String name;
 }

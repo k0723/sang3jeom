@@ -1,9 +1,12 @@
 package com.example.review.service;
 
+import com.example.review.client.OrderServiceClient;
 import com.example.review.client.UserServiceClient;
 import com.example.review.dto.ReviewRequestDTO;
 import com.example.review.dto.ReviewResponseDTO;
 import com.example.review.dto.ReviewSummaryDTO;
+import com.example.review.dto.ReviewWithOrderInfoDTO;
+import com.example.review.dto.client.OrderInfoDTO;
 import com.example.review.dto.client.UserInfoDTO;
 import com.example.review.domain.Review;
 import com.example.review.repository.ReviewRepository;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.AccessDeniedException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,6 +32,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final UserServiceClient userServiceClient;
+    private final OrderServiceClient orderServiceClient;
     
     @Value("${review-service.user-verification.enabled:false}")
     private boolean userVerificationEnabled;
@@ -264,6 +269,44 @@ public class ReviewService {
                 .collect(Collectors.toList());
         
         log.info("✅ 사용자 리뷰 조회 완료 | userId: {} | 리뷰 수: {}개", userId, result.size());
+        
+        return result;
+    }
+
+    /**
+     * 주문 정보를 포함한 사용자의 모든 리뷰 조회 (마이페이지용)
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewWithOrderInfoDTO> getMyReviewsWithOrderInfo(Long userId) {
+        log.info("📋 주문 정보 포함 사용자 리뷰 목록 조회 | userId: {}", userId);
+        
+        List<Review> reviews = reviewRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<Long> orderIds = reviews.stream()
+                .map(Review::getOrderId)
+                .collect(Collectors.toList());
+        
+        // Order Service에서 주문 정보들을 batch로 조회
+        List<OrderInfoDTO> orderInfos;
+        try {
+            orderInfos = orderServiceClient.getOrdersByIds(orderIds);
+        } catch (Exception e) {
+            log.error("⚠️ Order Service 통신 실패 - Fallback으로 빈 주문 정보 반환 | userId: {} | error: {}", 
+                    userId, e.getMessage());
+            orderInfos = Collections.emptyList();
+        }
+        
+        // 주문 ID를 키로 하는 Map 생성
+        java.util.Map<Long, OrderInfoDTO> orderInfoMap = orderInfos.stream()
+                .collect(Collectors.toMap(OrderInfoDTO::getOrderId, orderInfo -> orderInfo));
+        
+        List<ReviewWithOrderInfoDTO> result = reviews.stream()
+                .map(review -> {
+                    OrderInfoDTO orderInfo = orderInfoMap.get(review.getOrderId());
+                    return new ReviewWithOrderInfoDTO(review, orderInfo);
+                })
+                .collect(Collectors.toList());
+        
+        log.info("✅ 주문 정보 포함 사용자 리뷰 조회 완료 | userId: {} | 리뷰 수: {}개", userId, result.size());
         
         return result;
     }

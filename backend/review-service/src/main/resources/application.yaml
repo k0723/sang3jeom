@@ -15,6 +15,14 @@ spring:
 #    username: root
     password: ${DATASOURCE_PASSWORD}
 #    password: p@ssw0rd
+    # Connection Pool 설정 추가
+    hikari:
+      maximum-pool-size: 5       # 최대 연결 수를 줄임
+      minimum-idle: 1            # 최소 유휴 연결 수
+      idle-timeout: 10000        # 10초 후 유휴 연결 해제
+      max-lifetime: 300000       # 5분 후 연결 재생성
+      connection-timeout: 5000   # 5초 연결 타임아웃
+      leak-detection-threshold: 2000  # 2초 후 연결 누수 감지
 # JPA 설정
   jpa:
     hibernate:
@@ -27,9 +35,10 @@ spring:
   profiles:
     active: local # 기본 활성 프로필을 local로 지정
 
-# Feign Client가 호출할 user-service의 로컬 주소를 직접 지정
+# Feign Client가 호출할 service들의 로컬 주소를 직접 지정
 service-urls:
   user-service: http://localhost:8080
+  order-service: http://localhost:8082
 
 # Review Service 자체 설정
 review-service:
@@ -48,6 +57,9 @@ feign:
         loggerLevel: full      # 로그 레벨
       user-service:           # 특정 서비스별 설정
         connectTimeout: 5000   # user-service는 더 짧게 설정
+        readTimeout: 10000
+      order-service:          # order-service 설정 추가
+        connectTimeout: 5000
         readTimeout: 10000
   circuitbreaker:
     enabled: true
