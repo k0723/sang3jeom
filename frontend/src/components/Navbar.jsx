@@ -7,8 +7,10 @@ import {
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
 import { useLogout } from '../utils/useLogout';
+import { useAuth } from "../utils/useAuth";
 
-const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
+const Navbar = () => {
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);

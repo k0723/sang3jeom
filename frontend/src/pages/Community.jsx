@@ -20,7 +20,7 @@ function formatRelativeTime(dateString) {
   return `${diffDay}일 전`;
 }
 
-function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded }) {
+function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, setIsLoggedIn }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
