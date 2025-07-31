@@ -18,34 +18,28 @@ import OrderPage from "./pages/OrderPage";
 import OrderComplete from "./pages/OrderComplete";
 import Community from "./pages/Community";
 import CommunityPostDetail from "./pages/CommunityPostDetail";
+import { AuthProvider } from "./components/AuthContext.jsx"; 
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
   return (
     <BrowserRouter>
-      <Navbar 
-        isLoggedIn={isLoggedIn} 
-        setIsLoggedIn={setIsLoggedIn} 
-      />
-      <Routes>
-        <Route path="/" element={<Home setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/goods-maker" element={<GoodsMaker setIsLoggedIn={setIsLoggedIn}/>} />
-        {/* <Route path="/cart" element={<Cart />} /> */}
-        {/* <Route path="/order" element={<Order />} /> */}
-        <Route path="/order" element={<OrderPage setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/order-complete" element={<OrderComplete setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/mypage" element={<MyPage setIsLoggedIn={setIsLoggedIn}/>} />
-        {/* <Route path="/ranking" element={<Ranking />} /> */}
-        {/* <Route path="/admin" element={<Admin />} /> */}
-        {/* <Route path="/inquiry" element={<Inquiry />} /> */}
-        <Route path="/character-maker" element={<CharacterMaker setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/community" element={<Community setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/community/post/:id" element={<CommunityPostDetail setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/pay/success" element={<PaySuccess setIsLoggedIn={setIsLoggedIn}/>} />
-        <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
-      </Routes>
+      <AuthProvider>
+        <Navbar />  {/* 전역 상태는 useAuth()로 접근 */}
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/goods-maker" element={<GoodsMaker />} />
+          <Route path="/order" element={<OrderPage />} />
+          <Route path="/order-complete" element={<OrderComplete />} />
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/character-maker" element={<CharacterMaker />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/community/post/:id" element={<CommunityPostDetail />} />
+          <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+          <Route path="/pay/success" element={<PaySuccess />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

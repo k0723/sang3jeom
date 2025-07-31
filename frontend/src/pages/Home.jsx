@@ -29,7 +29,7 @@ const Home = () => {
 
   // 로그인 체크 함수
   const requireLogin = (callback) => {
-    const token = sessionStorage.getItem('jwt');
+    const token = localStorage.getItem('isLoggedIn');
     if (!token) {
       alert('로그인이 필요합니다!');
       navigate('/login');
