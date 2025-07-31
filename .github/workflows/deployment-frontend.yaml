@@ -54,9 +54,7 @@ jobs:
       # 6. S3에 빌드 결과물 업로드
       - name: Upload to S3
         run: |
-          aws s3 sync ./build s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
-        # ./build는 빌드 결과물이 생성되는 디렉토리 (프로젝트에 따라 dist일 수 있음)
-        # --delete 옵션은 S3에 있지만 로컬 빌드 결과물에는 없는 파일을 삭제
+          aws s3 sync ./dist s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
 
       # 7. (선택) CloudFront 캐시 무효화
       - name: Invalidate CloudFront Cache
