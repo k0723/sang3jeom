@@ -1,20 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const EMOJIS = ["😊", "😍", "😂", "👍", "🥳", "😎", "😭", "🔥", "🎉", "😆", "😇", "😺", "🐶", "🌸", "🍀", "🍕", "❤️", "⭐", "😜", "😏"];
 
-export default function PostUploadModal({ open, onClose, goodsImage, aiImages, savedGoodsId, onPost, user }) {
+export default function PostUploadModal({ open, onClose, goodsImage, aiImages, savedGoodsId, onPost, user, editMode = false, editPost = null, onEdit }) {
   if (!open || !user) return null;
-  const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState("전체 공개");
+  const [content, setContent] = useState(editMode && editPost ? editPost.content : "");
+  const [visibility, setVisibility] = useState(editMode && editPost ? (editPost.status === 'PRIVATE' ? '나만 보기' : '전체 공개') : "전체 공개");
   // 굿즈 이미지를 기본으로 선택
-  const [image, setImage] = useState(goodsImage);
+  const [image, setImage] = useState(editMode && editPost ? editPost.imageUrl : goodsImage);
   const [showEmoji, setShowEmoji] = useState(false);
   
   // 굿즈 이미지와 AI 이미지가 있는지 확인
   const hasGoodsImage = Boolean(goodsImage);
   const hasAiImages = Boolean(aiImages && aiImages.length > 0);
-  
 
+  // goodsImage나 aiImages가 변경될 때 image 상태 업데이트 (수정 모드가 아닐 때만)
+  useEffect(() => {
+    if (!editMode && goodsImage && !image) {
+      setImage(goodsImage);
+    }
+  }, [goodsImage, image, editMode]);
+
+  // 수정 모드일 때 기존 데이터로 초기화
+  useEffect(() => {
+    if (editMode && editPost) {
+      setContent(editPost.content || "");
+      setVisibility(editPost.status === 'PRIVATE' ? '나만 보기' : '전체 공개');
+      setImage(editPost.imageUrl || "");
+    }
+  }, [editMode, editPost]);
 
   // 더 이상 파일 업로드 핸들러 필요 없음
 
@@ -31,7 +45,7 @@ export default function PostUploadModal({ open, onClose, goodsImage, aiImages, s
           onClick={onClose}
           aria-label="닫기"
         >×</button>
-        <h2 className="text-lg font-bold mb-4">굿즈 게시물 만들기</h2>
+        <h2 className="text-lg font-bold mb-4">{editMode ? '게시글 수정' : '굿즈 게시물 만들기'}</h2>
         {/* 프로필/공개범위/본문 */}
         <div className="flex items-center w-full mb-3">
           <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
@@ -132,10 +146,17 @@ export default function PostUploadModal({ open, onClose, goodsImage, aiImages, s
         </div>
         <button
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-lg mt-2"
-          onClick={() => { onPost({ content, visibility, image }); onClose(); }}
+          onClick={() => { 
+            if (editMode && onEdit) {
+              onEdit({ content, visibility, image });
+            } else {
+              onPost({ content, visibility, image }); 
+            }
+            onClose(); 
+          }}
           disabled={!content.trim()}
         >
-          게시
+          {editMode ? '수정하기' : '게시'}
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, User, ShoppingCart, Heart, LogIn, UserPlus, Home, Palette, ChevronDown, LogOut, Users
@@ -15,6 +16,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const navigate = useNavigate();
   const dropdownRef = useRef();
   
@@ -45,7 +47,21 @@ const Navbar = () => {
     return true;
   };
 
+  // 로그인 체크 함수
+  const handleAuthRequiredClick = (path) => {
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   const navItems = [
+    { name: '홈', path: '/', icon: Home, requiresAuth: false },
+    { name: 'AI 캐릭터', path: '/character-maker', icon: Palette, requiresAuth: true },
+    { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart, requiresAuth: true },
+    { name: '상상공간', path: '/community', icon: Users, requiresAuth: false },
     { name: '홈', path: '/', icon: Home, requiresAuth: false },
     { name: 'AI 캐릭터', path: '/character-maker', icon: Palette, requiresAuth: true },
     { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart, requiresAuth: true },
@@ -54,6 +70,7 @@ const Navbar = () => {
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
 
+  const logout = useLogout(setIsLoggedIn);
   const logout = useLogout(setIsLoggedIn);
 
   return (
@@ -85,6 +102,11 @@ const Navbar = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => {
+                  if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                    e.preventDefault();
+                  }
+                }}
                 onClick={(e) => {
                   if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
                     e.preventDefault();
@@ -142,6 +164,7 @@ const Navbar = () => {
                       </Link>
                       <div className="border-t my-1" />
                       <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={logout}>
+                      <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={logout}>
                         <LogOut className="w-4 h-4" /> 로그아웃
                       </button>
                     </motion.div>
@@ -181,6 +204,13 @@ const Navbar = () => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onClick={(e) => {
+                      if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                        e.preventDefault();
+                      } else {
+                        setIsOpen(false);
+                      }
+                    }}
                     onClick={(e) => {
                       if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
                         e.preventDefault();

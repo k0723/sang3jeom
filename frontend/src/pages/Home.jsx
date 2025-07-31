@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import { 
@@ -18,6 +19,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 const Home = () => {
+  const navigate = useNavigate();
   const navigate = useNavigate();
   useEffect(() => {
     AOS.init({
@@ -176,6 +178,22 @@ const Home = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
+            <motion.button 
+              className="bg-yellow-400 text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => requireLogin(() => navigate('/character-maker'))}
+            >
+              AI 캐릭터 만들기
+            </motion.button>
+            <motion.button 
+              className="bg-white text-purple-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => requireLogin(() => navigate('/goods-maker'))}
+            >
+              굿즈 제작하기
+            </motion.button>
             <motion.button 
               className="bg-yellow-400 text-black px-8 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
               whileHover={{ scale: 1.05 }}
