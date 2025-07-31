@@ -25,7 +25,7 @@ spring:
         format_sql: true
     database-platform: org.hibernate.dialect.MySQL8Dialect
   hikari:
-    maximum-pool-size: 10       # 서비스당 최대 10개
+    maximum-pool-size: 5       # 서비스당 최대 5개
     minimum-idle: 2
     idle-timeout: 30000         # 30초
     max-lifetime: 600000        # 10분
