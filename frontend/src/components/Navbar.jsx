@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, User, ShoppingCart, Heart, LogIn, UserPlus, Home, Palette, ChevronDown, LogOut, Users
 } from 'lucide-react';
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
+import { useLogout } from '../utils/useLogout';
 
 const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showCart, setShowCart] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef();
   
   useEffect(() => {
@@ -32,22 +33,26 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDropdown]);
 
+  // 로그인 체크 함수
+  const handleAuthRequiredClick = (path) => {
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   const navItems = [
-    { name: '홈', path: '/', icon: Home },
-    { name: 'AI 캐릭터', path: '/character-maker', icon: Palette },
-    { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart },
-    { name: '상상공간', path: '/community', icon: Users },
+    { name: '홈', path: '/', icon: Home, requiresAuth: false },
+    { name: 'AI 캐릭터', path: '/character-maker', icon: Palette, requiresAuth: true },
+    { name: '굿즈 제작', path: '/goods-maker', icon: ShoppingCart, requiresAuth: true },
+    { name: '상상공간', path: '/community', icon: Users, requiresAuth: false },
   ];
 
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    if (typeof setIsLoggedIn === 'function') {
-      setIsLoggedIn(false);
-    }
-    window.location.href = '/login';
-  };
+  const logout = useLogout(setIsLoggedIn);
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
@@ -78,6 +83,11 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => {
+                  if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                    e.preventDefault();
+                  }
+                }}
                 className={`flex items-center gap-1 px-4 py-2 rounded-lg font-semibold text-base transition-all duration-200 relative
                   ${location.pathname === item.path ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}
                   group
@@ -111,13 +121,6 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                   <span className="font-semibold text-gray-800">마이페이지</span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
-                <button
-                  className="ml-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-all duration-200 flex items-center gap-1 border border-gray-200"
-                  onClick={() => setShowCart(true)}
-                >
-                  <ShoppingCart className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-gray-700">장바구니</span>
-                </button>
                 <AnimatePresence>
                   {showDropdown && (
                     <motion.div
@@ -136,7 +139,7 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                         <Heart className="w-4 h-4" /> 찜한 상품
                       </Link>
                       <div className="border-t my-1" />
-                      <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={handleLogout}>
+                      <button className="flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 w-full" onClick={logout}>
                         <LogOut className="w-4 h-4" /> 로그아웃
                       </button>
                     </motion.div>
@@ -176,7 +179,13 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    onClick={() => setIsOpen(false)}
+                    onClick={(e) => {
+                      if (item.requiresAuth && !handleAuthRequiredClick(item.path)) {
+                        e.preventDefault();
+                      } else {
+                        setIsOpen(false);
+                      }
+                    }}
                     className={`flex items-center space-x-3 px-3 py-3 rounded-lg font-semibold text-lg transition-all duration-200 ${
                       location.pathname === item.path
                         ? 'text-blue-600 bg-blue-50'
@@ -219,40 +228,6 @@ const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Cart Modal */}
-      <Modal open={showCart} onClose={() => setShowCart(false)}>
-        <div className="p-6 min-w-[320px] max-w-[400px]">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-blue-500" /> 장바구니
-          </h2>
-          {/* 장바구니 정보 템플릿 */}
-          <div className="divide-y divide-gray-200">
-            {/* 예시: 실제 데이터로 대체 필요 */}
-            <div className="py-3 flex justify-between items-center">
-              <div>
-                <div className="font-semibold text-gray-800">머그컵</div>
-                <div className="text-xs text-gray-500">수량: 2개</div>
-              </div>
-              <div className="font-bold text-blue-600">7,000원</div>
-            </div>
-            <div className="py-3 flex justify-between items-center">
-              <div>
-                <div className="font-semibold text-gray-800">티셔츠</div>
-                <div className="text-xs text-gray-500">수량: 1개</div>
-              </div>
-              <div className="font-bold text-blue-600">7,040원</div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-between items-center">
-            <span className="font-semibold text-gray-700">총 합계</span>
-            <span className="font-bold text-xl text-blue-700">14,040원</span>
-          </div>
-          <button className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300">
-            주문하기
-          </button>
-        </div>
-      </Modal>
     </nav>
   );
 };

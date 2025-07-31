@@ -31,7 +31,14 @@ function App() {
         <Route path="/goods-maker" element={<GoodsMaker />} />
         {/* <Route path="/cart" element={<Cart />} /> */}
         {/* <Route path="/order" element={<Order />} /> */}
-        <Route path="/mypage" element={<MyPage />} />
+        <Route 
+          path="/mypage" 
+          element={
+            <MyPage 
+              setIsLoggedIn={setIsLoggedIn} 
+            />
+          } 
+        />
         {/* <Route path="/ranking" element={<Ranking />} /> */}
         {/* <Route path="/admin" element={<Admin />} /> */}
         {/* <Route path="/inquiry" element={<Inquiry />} /> */}

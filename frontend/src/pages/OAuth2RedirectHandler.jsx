@@ -1,24 +1,46 @@
 // pages/OAuth2RedirectHandler.jsx
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 
-const OAuth2RedirectHandler = ({ setIsLoggedIn }) => {
-  const [searchParams] = useSearchParams();              // :contentReference[oaicite:0]{index=0}
+const OAuth2RedirectHandler = ({ setIsLoggedIn }) => {           // :contentReference[oaicite:0]{index=0}
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+ useEffect(() => {
+    (async () => {
+      try {
+        // 1️⃣ URL에서 accessToken 먼저 읽기
+        const token = searchParams.get("accessToken");
+        console.log("🔹 URL에서 받은 accessToken:", token);
 
-  useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      localStorage.setItem('jwt', token);
-      setIsLoggedIn(true);
-      navigate('/', { replace: true });
-    } else {
-      // 토큰 누락 시 에러 처리 또는 로그인 페이지로 리다이렉트
-      navigate('/login', { replace: true });
-    }
-  }, [searchParams, navigate, setIsLoggedIn]);
+        if (token) {
+          // 2️⃣ local/sessionStorage에 저장
+          localStorage.setItem('accessToken', token);
+          sessionStorage.setItem('accessToken', token);
+        }
 
-  return null; // 또는 스피너 로딩 컴포넌트 렌더링
+        // 3️⃣ 서버에 사용자 정보 요청 (쿠키 + 토큰 둘 다 가능)
+        const { data } = await axios.get('http://localhost:8080/users/me', {
+          withCredentials: true, // HttpOnly 쿠키 전송
+          headers: {
+            Authorization: `Bearer ${token}`, // ★ 백엔드에서 허용하면 헤더로도 보냄
+          },
+        });
+
+        console.log("🔹 사용자 정보:", data);
+        localStorage.setItem('isLoggedIn', 'true');
+        setIsLoggedIn(true);
+
+        // 4️⃣ 홈으로 이동
+        navigate('/', { replace: true });
+      } catch (e) {
+        console.error("OAuth2RedirectHandler 에러:", e);
+        navigate('/login?error=oauth', { replace: true });
+      }
+    })();
+  }, [navigate, searchParams, setIsLoggedIn]);
+
+  return null;
 };
 
 export default OAuth2RedirectHandler;

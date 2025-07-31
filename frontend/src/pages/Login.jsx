@@ -27,14 +27,17 @@ const Login = ({ setIsLoggedIn }) => {
     
     // TODO: 실제 로그인 로직 구현
     try {
-      const res = await axios.post('http://localhost:8080/login', {
-        email,
-        password
-      });
-      const token = res.data.token;
+      const res = await axios.post('http://localhost:8080/login', 
+        {email,
+        password},
+         { withCredentials: true } 
+      );
+      const { accessToken, refreshToken } = res.data;
       console.log(res.data); // 서버에서 반환된 JWT 토큰
-      sessionStorage.setItem('jwt',token);
-      localStorage.setItem('jwt',token);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+      sessionStorage.setItem('isLoggedIn', true);
+      localStorage.setItem('isLoggedIn', 'true');
       setIsLoggedIn(true);      // React 상태 업데이트
       navigate('/', { replace: true }); // SPA 내비게이션
     } catch (err) {
@@ -45,14 +48,14 @@ const Login = ({ setIsLoggedIn }) => {
     }
   };
 
-  const googlehandleSubmit = async (e) => {
+const handleSocialLogin = (provider) => {
+  return (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
-    // TODO: 실제 로그인 로직 구현
-    window.location.href = `http://localhost:8080/oauth2/authorization/google`;
+    window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
   };
+};
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -195,7 +198,7 @@ const Login = ({ setIsLoggedIn }) => {
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={googlehandleSubmit}
+                  onClick={handleSocialLogin('google')}
                 >
                   <span className="sr-only">Google로 로그인</span>
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -211,6 +214,7 @@ const Login = ({ setIsLoggedIn }) => {
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all duration-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={handleSocialLogin('kakao')}
                 >
                   <span className="sr-only">Kakao로 로그인</span>
                   <svg className="w-5 h-5" viewBox="0 0 24 24">

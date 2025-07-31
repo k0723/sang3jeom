@@ -1,7 +1,8 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.3'
+	id 'org.springframework.boot' version '3.4.7'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.google.protobuf' version '0.9.4'
 }
 
 group = 'com.example'
@@ -16,8 +17,36 @@ java {
 repositories {
 	mavenCentral()
 }
+ext {
+	grpcVersion = '1.64.0'
+    protobufVersion = '3.25.3'
+    grpcSpringBootVersion = '2.15.0.RELEASE' // yidongnan/grpc-spring-boot-starter
+    springCloudVersion = "2024.0.2" // Boot 3.3+ 호환. (3.5.x도 2024.0.x 사용)
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
+    }
+}
 
 dependencies {
+
+	// Spring Cloud OpenFeign
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	//Fegin Logger 
+	implementation 'io.github.openfeign:feign-core'
+    implementation 'io.github.openfeign:feign-slf4j'
+
+	//kafka
+	implementation 'org.springframework.kafka:spring-kafka'
+	//s3
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.696'
+	//redis 
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
 	implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0'
@@ -45,6 +74,40 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.mysql:mysql-connector-j'
+	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.696'
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+
+
+
+
+	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.696'
+
+}
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:${protobufVersion}" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins { grpc {} }
+            task.builtins { java {} }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs "${projectDir}/build/generated/source/proto/main/java",
+                    "${projectDir}/build/generated/source/proto/main/grpc"
+        }
+    }
 }
 
 tasks.named('test') {

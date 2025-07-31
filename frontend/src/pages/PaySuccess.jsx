@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Cookies from 'js-cookie';
 
 export default function PaySuccess() {
   const location = useLocation();
@@ -9,6 +10,9 @@ export default function PaySuccess() {
   const navigatedRef = useRef(false);
 
   useEffect(() => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+
     const params = new URLSearchParams(location.search);
     const pg_token = params.get("pg_token");
     const tid = sessionStorage.getItem("kakao_tid");
@@ -24,9 +28,40 @@ export default function PaySuccess() {
     const phone = sessionStorage.getItem("phone") || "010-1234-5678";
     const email = sessionStorage.getItem("email") || "seul1234@gmail.com";
     const amount = sessionStorage.getItem("amount");
+    const price = sessionStorage.getItem("amount");
+    const userName = sessionStorage.getItem("receiver") || "홍길동";
+
+    const address1 = sessionStorage.getItem("address");
+    const address2 = sessionStorage.getItem("address2") || "";
+    const addressValue = (address1 ? address1 : "") + (address2 ? " " + address2 : "");
+    const quantityValue = quantity ? Number(quantity) : 1;
+
+    // sessionStorage에서 goodsName 가져오기
+    const goodsName = sessionStorage.getItem("goods_name") || "AI 캐릭터 상품";
+    
+    // 디버깅을 위한 로그 추가
+    console.log("PaySuccess - sessionStorage 값들:", {
+      goodsId: sessionStorage.getItem("goods_id"),
+      goodsName: sessionStorage.getItem("goods_name"),
+      quantity: sessionStorage.getItem("quantity"),
+      address: sessionStorage.getItem("address"),
+      memo: sessionStorage.getItem("memo")
+    });
+
+    // goodsId가 null인 경우 기본값 설정
+    const finalGoodsId = goodsId ? Number(goodsId) : 1;
+    const finalGoodsName = goodsName || "AI 캐릭터 상품";
+
+    console.log("PaySuccess - 최종 주문 데이터:", {
+      goodsId: finalGoodsId,
+      goodsName: finalGoodsName,
+      quantity: quantityValue,
+      address: addressValue,
+      price: price ? Number(price) : 1
+    });
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
-      fetch("http://localhost:8080/pay/approve", {
+      fetch("http://localhost:8082/pay/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -38,51 +73,57 @@ export default function PaySuccess() {
       })
         .then(res => res.json())
         .then(data => {
-          fetch("http://localhost:8080/orders/direct", {
+          const token = localStorage.getItem("accessToken");
+          fetch("http://localhost:8082/orders/direct", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({
-              goodsId: Number(goodsId),
-              quantity: Number(quantity),
-              userId: Number(userId),
-              address: address,
-              memo: memo
+              goodsId: finalGoodsId,
+              goodsName: finalGoodsName,
+              quantity: quantityValue,
+              address: addressValue,
+              memo: memo,
+              price: price ? Number(price) : 1
             })
           })
             .then(res => res.json())
             .then(orderData => {
-              if (!navigatedRef.current) {
-                navigatedRef.current = true;
+                // 세션스토리지에서 굿즈 정보 가져오기
+                const savedGoodsId = sessionStorage.getItem("savedGoodsId");
+                const savedGoodsImageUrl = sessionStorage.getItem("savedGoodsImageUrl");
+                
+
+                
                 navigate("/order-complete", {
                   state: {
                     orderId: orderData.orderId || partner_order_id,
                     receiver,
                     phone,
-                    address,
+                    address: addressValue, // 합쳐진 주소 전달
                     email,
-                    amount: amount ? Number(amount) : 0
+                    amount: amount ? Number(amount) : 0,
+                    savedGoodsId,
+                    savedGoodsImageUrl
                   }
                 });
-              }
             })
             .catch(() => {
-              if (!navigatedRef.current) {
                 setStatus("error");
                 setMessage("주문 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.");
-              }
             });
         })
         .catch(() => {
-          if (!navigatedRef.current) {
             setStatus("error");
             setMessage("결제 승인 중 오류가 발생했습니다. 다시 시도해주세요.");
-          }
         });
     } else {
       setStatus("error");
       setMessage("결제 승인에 필요한 정보가 누락되었습니다.");
     }
-  }, [location, navigate]);
+  }, []); // 의존성 배열을 빈 배열로!
 
   // navigate가 실행되면 컴포넌트가 곧 언마운트되므로, 에러 메시지가 잠깐 보이는 현상 방지
   if (status === "processing") {

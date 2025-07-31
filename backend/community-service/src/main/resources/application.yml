@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${COMMUNITY_DB_URL}
+    username: ${COMMUNITY_DB_USERNAME}
+    password: ${COMMUNITY_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # 개발 중엔 update, 운영은 validate or none 권장
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+
+server:
+  port: 8083
+
+# user-service 연동 설정
+user:
+  service:
+    url: http://localhost:8080

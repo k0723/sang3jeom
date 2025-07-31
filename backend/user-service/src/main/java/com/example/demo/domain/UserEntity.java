@@ -19,6 +19,12 @@ public class UserEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = true)
+    private String provider;   // "google", "kakao" 등
+
+    @Column(nullable = true)
+    private String providerId; // OAuth 공급자가 준 user ID
+
     // 로그인 식별자
     @Column(nullable = false, unique = true)
     private String username;

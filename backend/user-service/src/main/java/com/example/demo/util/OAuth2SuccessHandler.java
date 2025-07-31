@@ -3,6 +3,8 @@ package com.example.demo.util;
 import com.example.demo.domain.UserEntity;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.DomainUserDetails;
+import com.example.demo.service.TokenService;
+import com.example.demo.dto.JwtResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -12,56 +14,70 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+
 import java.util.Map;
 import java.io.IOException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import java.util.Objects;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    private final JwtTokenProvider jwtProvider;
+    private final TokenService tokenService;
     private final UserRepository userRepo;
-
-    public OAuth2SuccessHandler(JwtTokenProvider jwtProvider, UserRepository userRepo) {
-        this.jwtProvider = jwtProvider;
-        this.userRepo = userRepo;
-    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
-                                        Authentication authentication) 
-                                        throws IOException {
-        // 1) OAuth2User로부터 프로필 정보 꺼내기
-        OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
-        String email = oauth2User.getAttribute("email");
-        String name  = oauth2User.getAttribute("name");
-        String pictureUrl = oauth2User.getAttribute("picture");
+                                        Authentication authentication) throws IOException {
+        log.debug("[OAuth2SuccessHandler] success start");
 
-        // 2) DB에서 User 조회, 없으면 새로 저장
-        UserEntity  user = userRepo.findByEmail(email)
-            .orElseGet(() -> {
-                UserEntity newUser = UserEntity.builder()
-                .email(email)
-                    .username(name != null ? name : email)       // username 필수
-                    .name(name != null ? name : email)           // 프로필 이름
-                    .passwordHash("")                            // OAuth2 사용자이므로 빈 문자열
-                    .roles(false)                                // 기본 ROLE_USER
-                    .profileImageUrl(pictureUrl)                 // 프로필 이미지
-                    .build();
-                return userRepo.save(newUser);
+        OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
+
+        String provider = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
+        String providerId;
+        if ("kakao".equals(provider)) {
+            providerId = Objects.toString(oauth2User.getAttribute("id"), null);
+        } else if ("google".equals(provider)) {
+            providerId = Objects.toString(oauth2User.getAttribute("sub"), null); // ✅ 구글은 "sub"
+        } else {
+            log.error("Unknown provider: " + provider);
+            response.sendError(HttpStatus.BAD_REQUEST.value(), "지원하지 않는 소셜 로그인입니다: " + provider);
+            return;
+        }
+
+        if (providerId == null) {
+            log.error("providerId is null from OAuth2User attributes");
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), "OAuth2 인증 실패: providerId 없음");
+            return;
+        }
+
+        // CustomOAuth2UserService에서 이미 회원가입/조회했으므로 여기선 provider+providerId 기준 조회만 하면 됨
+        UserEntity user = userRepo.findByProviderAndProviderId(provider, providerId)
+            .orElseThrow(() -> {
+                log.error("OAuth2SuccessHandler: 인증된 사용자를 찾을 수 없습니다.");
+                return new RuntimeException("OAuth2 인증된 사용자가 DB에 존재하지 않음");
             });
 
-        // 3) JWT 토큰 생성
-        String token = jwtProvider.createToken(email, user.isRoles(), user.getId());
+        String role = user.isRoles() ? "ROLE_ADMIN" : "ROLE_USER";
+        JwtResponseDTO tokens = tokenService.issueTokens(user.getId(), role);
+         tokenService.writeTokensAsCookies(tokens, response);
 
-        String targetUrl = UriComponentsBuilder
-        .fromUriString("http://localhost:5173/oauth2/redirect")
-        .queryParam("token", token)
-        .build()
-        .toUriString();
+        // ✅ Access Token만 URL로 전달
+        String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth2/redirect")
+                .queryParam("accessToken", tokens.getAccessToken()) // 프론트에서 읽어서 로컬스토리지에 저장
+                .build()
+                .toUriString();
 
-        // 4) JSON 응답
-        response.setStatus(HttpStatus.OK.value());
-        response.sendRedirect(targetUrl);
+        response.setHeader("Cache-Control", "no-store");
+        response.setHeader("Pragma", "no-cache");
+
+        log.debug("[OAuth2SuccessHandler] Redirecting to: {}", redirectUrl);
+        response.sendRedirect(redirectUrl);
     }
 }
+

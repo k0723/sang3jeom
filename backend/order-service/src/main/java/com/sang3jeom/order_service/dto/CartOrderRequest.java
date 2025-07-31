@@ -9,4 +9,6 @@ public class CartOrderRequest {
     private Integer cartId;
     private String memo; // optional
     private String address; // 배송지 주소
+    private String userName;
+    private long price;
 } 

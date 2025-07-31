@@ -15,6 +15,7 @@ public class OAuth2UserAdapter implements OAuth2User {
 
     private final OAuth2User delegate;
     private final Collection<? extends GrantedAuthority> authorities;
+    private final Long userId;
 
     @Override
     public Map<String, Object> getAttributes() {
@@ -23,13 +24,15 @@ public class OAuth2UserAdapter implements OAuth2User {
 
     @Override
     public String getName() {
-        // 식별자 용도로 ID나 이메일 등을 리턴
-        Object sub = delegate.getAttributes().get("sub");
-        return sub != null ? sub.toString() : delegate.getName();
+        return String.valueOf(userId);
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 }

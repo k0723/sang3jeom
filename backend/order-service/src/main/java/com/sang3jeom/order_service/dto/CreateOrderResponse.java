@@ -13,4 +13,8 @@ public class CreateOrderResponse {
     private Integer orderId;
     private String status;
     private LocalDateTime orderedAt;
+    private int quantity;
+    private String userName;
+    private long price;
+    private String memo;
 }
