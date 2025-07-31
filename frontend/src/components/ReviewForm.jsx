@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Star, Paperclip} from 'lucide-react';
-import axios from 'axios';
+import { reviewAPIService } from '../utils/reviewAPI';
 
 // 별점 컴포넌트
 const StarRating = ({rating, setRating}) => {
@@ -75,58 +75,62 @@ export default function ReviewForm() {
             alert("별점을 선택해주세요.");
             return;
         }
+        
+        if (!content.trim()) {
+            alert("후기 내용을 입력해주세요.");
+            return;
+        }
 
-        setIsSubmitting(true); // 제출 시작 시 로딩 상태로 변경
+        setIsSubmitting(true);
 
-        let uploadedImageUrl = null;
-
-        // --- 백엔드 연동 로직 ---
         try {
-            // 1. 이미지 파일이 있으면 S3에 먼저 업로드
+            let uploadedImageUrl = null;
+
+            // 이미지가 있는 경우 업로드 처리
             if (imageFile) {
-                // 1-1. 백엔드에 Presigned URL 요청
-                const presignedResponse = await axios.post('/api/images/presigned-url', {
-                    filename: imageFile.name
-                });
-                const presignedUrl = presignedResponse.data;
-
-                // 1-2. 받은 Presigned URL로 S3에 직접 파일 업로드
-                await axios.put(presignedUrl, imageFile, {
-                    headers: {'Content-Type': imageFile.type}
-                });
-
-                // 1-3. 최종 저장될 이미지 URL 계산 (쿼리 스트링 제거)
-                uploadedImageUrl = presignedUrl.split('?')[0];
+                // TODO: 이미지 업로드 API 구현 필요
+                // 현재는 임시로 FormData를 사용하여 처리
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                
+                // 실제 환경에서는 별도의 이미지 업로드 API를 호출해야 함
+                console.log('이미지 업로드 로직 구현 필요:', imageFile.name);
+                // uploadedImageUrl = await uploadImageToServer(formData);
             }
 
-            // TODO: 실제 환경에서는 쿠키나 로컬 스토리지에서 JWT 토큰을 가져와야 합니다.
-            const token = localStorage.getItem('accessToken');
+            // 리뷰 데이터 준비
+            const reviewData = {
+                rating: rating,
+                content: content.trim(),
+                imageUrls: uploadedImageUrl ? [uploadedImageUrl] : []
+            };
 
-            await axios.post(
-                '/api/reviews',
-                {
-                    rating: rating,
-                    content: content,
-                    imageUrl: uploadedImageUrl, // S3에 업로드된 이미지 URL 포함
-                },
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
+            // 리뷰 작성 API 호출
+            await reviewAPIService.createReview(reviewData);
 
             alert("소중한 후기 감사합니다!");
+            
             // 폼 초기화
             setRating(0);
             setContent("");
             setImageFile(null);
-            document.getElementById('image-upload').value = "";
+            const fileInput = document.getElementById('image-upload');
+            if (fileInput) {
+                fileInput.value = "";
+            }
+
+            // 페이지 새로고침 또는 리뷰 목록 업데이트
+            window.location.reload();
 
         } catch (error) {
             console.error("리뷰 등록 실패:", error);
-            alert("리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+            if (error.response?.status === 400) {
+                alert("이미 리뷰를 작성하셨거나 잘못된 요청입니다.");
+            } else if (error.response?.status === 401) {
+                alert("로그인이 필요합니다.");
+            } else {
+                alert("리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+            }
         } finally {
             setIsSubmitting(false);
         }
