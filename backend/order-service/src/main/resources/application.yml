@@ -5,6 +5,15 @@ spring:
     password: ${ORDER_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+    hikari:
+      maximum-pool-size: 3       # 최대 연결 수를 3으로 줄임
+      minimum-idle: 1            # 최소 유휴 연결 수
+      idle-timeout: 30000        # 30초 후 유휴 연결 해제
+      max-lifetime: 300000       # 5분 후 연결 재생성
+      connection-timeout: 10000  # 10초 연결 타임아웃
+      leak-detection-threshold: 5000  # 5초 후 연결 누수 감지
+      validation-timeout: 3000   # 검증 타임아웃 3초
+
   jpa:
     hibernate:
       ddl-auto: update  # 개발 중엔 update, 운영은 validate or none 권장

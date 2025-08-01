@@ -7,13 +7,14 @@ import GoodsMaker from "./pages/GoodsMaker";
 // import Order from "./pages/Order";
 import MyPage from "./pages/MyPage";
 import Navbar from "./components/Navbar";
+import { AuthProvider } from "./components/AuthContext";
 // import Ranking from "./pages/Ranking";
 // import Admin from "./pages/Admin";
 // import Inquiry from "./pages/Inquiry";
 import CharacterMaker from './pages/CharacterMaker';
 import OAuth2RedirectHandler from './pages/OAuth2RedirectHandler';
 import PaySuccess from "./pages/PaySuccess";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import OrderPage from "./pages/OrderPage";
 import OrderComplete from "./pages/OrderComplete";
 import Community from "./pages/Community";
@@ -21,8 +22,10 @@ import CommunityPostDetail from "./pages/CommunityPostDetail";
 import { AuthProvider } from "./components/AuthContext.jsx"; 
 
 function App() {
+
+
   return (
-    <BrowserRouter>
+   <BrowserRouter>
       <AuthProvider>
         <Navbar />  {/* 전역 상태는 useAuth()로 접근 */}
         <Routes>

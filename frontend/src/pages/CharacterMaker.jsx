@@ -542,44 +542,44 @@ export default function CharacterMaker({ onDone }) {
             </motion.div>
 
             {/* Reviews */}
-            <motion.div 
-              className="bg-white rounded-2xl shadow-lg p-6"
-              data-aos="fade-left"
-              data-aos-delay="200"
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-6">고객 후기</h2>
-              <div className="space-y-4">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-gray-600">5.0</span>
-                  </div>
-                  <p className="text-gray-700 text-sm mb-2">
-                    "우리 강아지가 너무 귀엽게 나왔어요! 굿즈로도 만들어서 정말 만족합니다."
-                  </p>
-                  <div className="text-xs text-gray-500">- 박**님</div>
-                </div>
-                
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-current" />
-                      ))}
-                    </div>
-                    <span className="ml-2 text-sm text-gray-600">5.0</span>
-                  </div>
-                  <p className="text-gray-700 text-sm mb-2">
-                    "빠른 생성 속도와 퀄리티에 놀랐어요. 친구들한테도 추천했어요!"
-                  </p>
-                  <div className="text-xs text-gray-500">- 김**님</div>
-                </div>
-              </div>
-            </motion.div>
+            {/*<motion.div */}
+            {/*  className="bg-white rounded-2xl shadow-lg p-6"*/}
+            {/*  data-aos="fade-left"*/}
+            {/*  data-aos-delay="200"*/}
+            {/*>*/}
+            {/*  <h2 className="text-xl font-bold text-gray-800 mb-6">고객 후기</h2>*/}
+            {/*  <div className="space-y-4">*/}
+            {/*    <div className="p-4 border border-gray-200 rounded-lg">*/}
+            {/*      <div className="flex items-center mb-2">*/}
+            {/*        <div className="flex text-yellow-400">*/}
+            {/*          {[...Array(5)].map((_, i) => (*/}
+            {/*            <Star key={i} className="w-4 h-4 fill-current" />*/}
+            {/*          ))}*/}
+            {/*        </div>*/}
+            {/*        <span className="ml-2 text-sm text-gray-600">5.0</span>*/}
+            {/*      </div>*/}
+            {/*      <p className="text-gray-700 text-sm mb-2">*/}
+            {/*        "우리 강아지가 너무 귀엽게 나왔어요! 굿즈로도 만들어서 정말 만족합니다."*/}
+            {/*      </p>*/}
+            {/*      <div className="text-xs text-gray-500">- 박**님</div>*/}
+            {/*    </div>*/}
+            {/*    */}
+            {/*    <div className="p-4 border border-gray-200 rounded-lg">*/}
+            {/*      <div className="flex items-center mb-2">*/}
+            {/*        <div className="flex text-yellow-400">*/}
+            {/*          {[...Array(5)].map((_, i) => (*/}
+            {/*            <Star key={i} className="w-4 h-4 fill-current" />*/}
+            {/*          ))}*/}
+            {/*        </div>*/}
+            {/*        <span className="ml-2 text-sm text-gray-600">5.0</span>*/}
+            {/*      </div>*/}
+            {/*      <p className="text-gray-700 text-sm mb-2">*/}
+            {/*        "빠른 생성 속도와 퀄리티에 놀랐어요. 친구들한테도 추천했어요!"*/}
+            {/*      </p>*/}
+            {/*      <div className="text-xs text-gray-500">- 김**님</div>*/}
+            {/*    </div>*/}
+            {/*  </div>*/}
+            {/*</motion.div>*/}
           </div>
         </div>
       </div>

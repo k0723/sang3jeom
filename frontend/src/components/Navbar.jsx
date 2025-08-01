@@ -7,7 +7,7 @@ import {
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
 import { useLogout } from '../utils/useLogout';
-import { useAuth } from "../utils/useAuth";
+import { useAuth } from '../utils/useAuth';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,7 +110,7 @@ const Navbar = () => {
                   <LogIn className="w-4 h-4" /> 로그인
                 </Link>
                 <Link to="/signup" className="px-5 py-2 rounded-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-1">
-                  <UserPlus className="w-4 h-4" /> 회원가입
+                  <UserPlus className="w-4 h-4" /> 회원가입 수정
                 </Link>
               </>
             ) : (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, Camera, Trash2 } from 'lucide-react';
+import { imageAPIService } from '../utils/reviewAPI';
 
 const ReviewModal = ({ isOpen, order, existingReview, onClose, onSubmit }) => {
   const [content, setContent] = useState('');
@@ -44,13 +45,17 @@ const ReviewModal = ({ isOpen, order, existingReview, onClose, onSubmit }) => {
       return;
     }
     
-    // 이미지 URL만 추출
-    const imageUrls = images.map(img => img.url).filter(url => url);
+    // S3에 업로드된 이미지 URL만 추출 (blob URL 제외)
+    const uploadedImageUrls = images
+      .filter(img => img.uploaded && img.url && !img.url.startsWith('blob:'))
+      .map(img => img.url);
+    
+    console.log('제출할 이미지 URLs:', uploadedImageUrls);
     
     onSubmit({
       content: content.trim(),
       rating,
-      imageUrls
+      imageUrls: uploadedImageUrls
     });
     
     // 모달 초기화
@@ -95,56 +100,45 @@ const ReviewModal = ({ isOpen, order, existingReview, onClose, onSubmit }) => {
       
       setImages(prev => [...prev, ...previewImages]);
       
-      // TODO: 실제 서버 업로드 구현
-      // 현재는 임시로 클라이언트 사이드 URL 사용
-      // 실제 구현 시에는 multipart/form-data로 서버에 업로드하고 
-      // 서버에서 반환된 URL을 사용해야 함
-      
-      // 예시 서버 업로드 코드 (주석 처리)
-      /*
-      const uploadPromises = files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('image', file);
-        
-        const response = await fetch('/api/upload/review-image', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          },
-          body: formData
-        });
-        
-        if (!response.ok) {
-          throw new Error('이미지 업로드 실패');
+      // S3에 실제 업로드
+      const uploadPromises = files.map(async (file, index) => {
+        try {
+          console.log(`이미지 ${index + 1} 업로드 시작:`, file.name);
+          
+          // reviewAPIService의 uploadReviewImage 사용
+          const imageUrl = await imageAPIService.uploadReviewImage(file);
+          
+          console.log(`이미지 ${index + 1} 업로드 완료:`, imageUrl);
+          
+          // 업로드 완료된 이미지 정보 업데이트
+          setImages(prev => prev.map(img => 
+            img.name === file.name && img.uploading
+              ? { ...img, url: imageUrl, uploading: false, uploaded: true }
+              : img
+          ));
+          
+          return imageUrl;
+        } catch (error) {
+          console.error(`이미지 ${index + 1} 업로드 실패:`, error);
+          
+          // 실패한 이미지 제거
+          setImages(prev => prev.filter(img => 
+            !(img.name === file.name && img.uploading)
+          ));
+          
+          alert(`이미지 "${file.name}" 업로드에 실패했습니다: ${error.message}`);
+          throw error;
         }
-        
-        const data = await response.json();
-        return data.imageUrl;
       });
       
-      const uploadedUrls = await Promise.all(uploadPromises);
-      */
+      // 모든 업로드 완료 대기
+      await Promise.allSettled(uploadPromises);
       
-      // 업로드 완료 처리 (현재는 임시 URL 사용)
-      setTimeout(() => {
-        setImages(prev => 
-          prev.map(img => 
-            previewImages.some(preview => preview.name === img.name) 
-              ? { ...img, uploading: false } 
-              : img
-          )
-        );
-      }, 1000);
+      console.log('모든 이미지 업로드 처리 완료');
       
     } catch (error) {
       console.error('이미지 업로드 실패:', error);
       alert('이미지 업로드에 실패했습니다. 다시 시도해주세요.');
-      
-      // 실패한 이미지들 제거
-      const failedImageNames = files.map(f => f.name);
-      setImages(prev => 
-        prev.filter(img => !failedImageNames.includes(img.name))
-      );
     }
   };
 
@@ -354,8 +348,17 @@ const ReviewModal = ({ isOpen, order, existingReview, onClose, onSubmit }) => {
                         />
                         {/* 업로딩 상태 표시 */}
                         {image.uploading && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg">
-                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mb-1"></div>
+                            <span className="text-white text-xs">업로드 중...</span>
+                          </div>
+                        )}
+                        {/* 업로드 완료 표시 */}
+                        {image.uploaded && (
+                          <div className="absolute top-1 right-1 bg-green-500 text-white rounded-full p-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
                           </div>
                         )}
                         {/* 삭제 버튼 */}

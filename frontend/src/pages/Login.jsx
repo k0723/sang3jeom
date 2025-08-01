@@ -20,8 +20,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
-  
+  const { setIsLoggedIn } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
