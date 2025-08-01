@@ -19,7 +19,6 @@ import OrderPage from "./pages/OrderPage";
 import OrderComplete from "./pages/OrderComplete";
 import Community from "./pages/Community";
 import CommunityPostDetail from "./pages/CommunityPostDetail";
-import { AuthProvider } from "./components/AuthContext.jsx"; 
 
 function App() {
 
