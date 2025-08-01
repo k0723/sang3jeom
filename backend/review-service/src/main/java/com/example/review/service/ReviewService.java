@@ -1,8 +1,12 @@
 package com.example.review.service;
 
+import com.example.review.client.OrderServiceClient;
 import com.example.review.client.UserServiceClient;
 import com.example.review.dto.ReviewRequestDTO;
 import com.example.review.dto.ReviewResponseDTO;
+import com.example.review.dto.ReviewSummaryDTO;
+import com.example.review.dto.ReviewWithOrderInfoDTO;
+import com.example.review.dto.client.OrderInfoDTO;
 import com.example.review.dto.client.UserInfoDTO;
 import com.example.review.domain.Review;
 import com.example.review.repository.ReviewRepository;
@@ -16,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.AccessDeniedException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +32,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final UserServiceClient userServiceClient;
+    private final OrderServiceClient orderServiceClient;
     
     @Value("${review-service.user-verification.enabled:false}")
     private boolean userVerificationEnabled;
@@ -36,10 +42,17 @@ public class ReviewService {
 
     // 리뷰 생성
     public void createReview(Long userId, ReviewRequestDTO requestDTO) {
-        log.info("🚀 리뷰 생성 시작 | userId: {} | rating: {}⭐ | content: '{}'", 
-                userId, requestDTO.getRating(), 
+        log.info("🚀 리뷰 생성 시작 | userId: {} | orderId: {} | rating: {}⭐ | content: '{}'", 
+                userId, requestDTO.getOrderId(), requestDTO.getRating(), 
                 requestDTO.getContent().length() > 20 ? 
                     requestDTO.getContent().substring(0, 20) + "..." : requestDTO.getContent());
+        
+        // 이미 리뷰가 존재하는지 확인
+        if (reviewRepository.existsByOrderIdAndUserId(requestDTO.getOrderId(), userId)) {
+            log.error("❌ 리뷰 생성 실패 - 이미 존재하는 리뷰 | orderId: {} | userId: {}", 
+                    requestDTO.getOrderId(), userId);
+            throw new IllegalArgumentException("이미 해당 주문에 대한 리뷰가 존재합니다.");
+        }
         
         // 사용자 존재 여부 확인 (설정에 따라 선택적 실행)
         if (userVerificationEnabled) {
@@ -48,20 +61,27 @@ public class ReviewService {
             log.info("🔧 사용자 검증 비활성화 - 개발 모드 | userId: {}", userId);
         }
 
+        // 여러 이미지 URL을 JSON 형태로 저장
+        String imageUrl = null;
+        if (requestDTO.getImageUrls() != null && !requestDTO.getImageUrls().isEmpty()) {
+            imageUrl = String.join(",", requestDTO.getImageUrls()); // 간단히 콤마로 구분
+        }
+
         Review review = Review.builder()
                 .content(requestDTO.getContent())
                 .rating(requestDTO.getRating())
                 .userId(userId)
-                .imageUrl(requestDTO.getImageUrl())
+                .orderId(requestDTO.getOrderId())
+                .imageUrl(imageUrl)
                 .build();
                 
-        log.debug("📝 Review 엔티티 생성 완료 | createdAt: {} | hasImage: {}", 
-                review.getCreatedAt(), requestDTO.getImageUrl() != null);
+        log.debug("📝 Review 엔티티 생성 완료 | orderId: {} | hasImage: {}", 
+                requestDTO.getOrderId(), imageUrl != null);
         
         Review savedReview = reviewRepository.save(review);
         
-        log.info("✅ 리뷰 저장 성공 | reviewId: {} | userId: {} | createdAt: {}", 
-                savedReview.getId(), savedReview.getUserId(), savedReview.getCreatedAt());
+        log.info("✅ 리뷰 저장 성공 | reviewId: {} | orderId: {} | userId: {} | createdAt: {}", 
+                savedReview.getId(), savedReview.getOrderId(), savedReview.getUserId(), savedReview.getCreatedAt());
     }
     
     /**
@@ -124,7 +144,13 @@ public class ReviewService {
             }
         }
 
-        review.update(requestDTO.getContent(), requestDTO.getRating(), requestDTO.getImageUrl());
+        // 여러 이미지 URL을 콤마로 구분해서 저장
+        String imageUrl = null;
+        if (requestDTO.getImageUrls() != null && !requestDTO.getImageUrls().isEmpty()) {
+            imageUrl = String.join(",", requestDTO.getImageUrls());
+        }
+
+        review.update(requestDTO.getContent(), requestDTO.getRating(), imageUrl);
         log.info("✅ 리뷰 수정 완료 | reviewId: {} | userId: {}", reviewId, userId);
     }
 
@@ -161,17 +187,179 @@ public class ReviewService {
 //        return new ReviewResponseDTO(review);
 //    }
 
-    // 리뷰 조회
+    // 리뷰 조회 - 사용자 이름 포함
     @Transactional(readOnly = true)
     public Page<ReviewResponseDTO> findReviewsByPage(Pageable pageable) {
         log.debug("📋 리뷰 목록 조회 | page: {} | size: {} | sort: {}", 
                 pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         
-        Page<ReviewResponseDTO> reviews = reviewRepository.findAll(pageable).map(ReviewResponseDTO::new);
+        Page<Review> reviewPage = reviewRepository.findAll(pageable);
+        
+        Page<ReviewResponseDTO> reviews = reviewPage.map(review -> {
+            String userName = getUserName(review.getUserId());
+            return new ReviewResponseDTO(review, userName);
+        });
         
         log.info("📊 리뷰 목록 조회 완료 | 총 {}건 | 현재 페이지: {}/{}", 
                 reviews.getTotalElements(), reviews.getNumber() + 1, reviews.getTotalPages());
         
         return reviews;
+    }
+    
+    /**
+     * 사용자 이름 조회 (현재는 Mock 데이터 중심)
+     * User Service 개발 완료 후 실제 연동 예정
+     */
+    private String getUserName(Long userId) {
+        // 현재는 다른 개발자가 User Service 작업 중이므로 Mock 데이터 사용
+        if (!userVerificationEnabled) {
+            log.debug("🧪 Mock 모드 - 가상 사용자 이름 생성 | userId: {}", userId);
+            return generateMockUserName(userId);
+        }
+        
+        // User Service 호출 시도 (실패 시 Fallback)
+        try {
+            log.debug("👤 User Service 호출 시도 | userId: {}", userId);
+            UserInfoDTO userInfo = userServiceClient.getUserById(userId);
+            
+            if (userInfo != null && userInfo.getName() != null) {
+                log.debug("✅ 실제 사용자 이름 조회 성공 | userId: {} | name: {}", userId, userInfo.getName());
+                return userInfo.getName();
+            }
+            
+        } catch (Exception e) {
+            log.debug("⚠️ User Service 호출 실패 - Fallback 사용 | userId: {} | error: {}", userId, e.getMessage());
+        }
+        
+        // Fallback: Mock 사용자 이름 생성
+        return generateMockUserName(userId);
+    }
+    
+    /**
+     * Mock 사용자 이름 생성 (개발/테스트용)
+     */
+    private String generateMockUserName(Long userId) {
+        // 다양한 Mock 사용자 이름 패턴
+        String[] mockNames = {
+            "김민수", "이영희", "박철수", "최수진", "정다영", 
+            "황준호", "임서연", "조민우", "한지은", "신동혁"
+        };
+        
+        // userId를 기반으로 일관된 이름 할당
+        int nameIndex = (int) (userId % mockNames.length);
+        String mockName = mockNames[nameIndex];
+        
+        log.debug("🎭 Mock 사용자 이름 생성 | userId: {} | mockName: {}", userId, mockName);
+        return mockName;
+    }
+
+    // === 주문별 리뷰 관련 메서드들 ===
+    
+    /**
+     * 특정 주문의 리뷰 존재 여부 확인
+     */
+    @Transactional(readOnly = true)
+    public boolean hasReviewForOrder(Long orderId) {
+        boolean exists = reviewRepository.existsByOrderId(orderId);
+        log.debug("🔍 주문 리뷰 존재 여부 확인 | orderId: {} | exists: {}", orderId, exists);
+        return exists;
+    }
+    
+    /**
+     * 특정 주문의 리뷰 조회 (수정 모달용)
+     */
+    @Transactional(readOnly = true)
+    public ReviewResponseDTO getReviewByOrderId(Long orderId) {
+        Review review = reviewRepository.findByOrderId(orderId)
+                .orElseThrow(() -> {
+                    log.error("❌ 주문 리뷰 조회 실패 - 존재하지 않는 리뷰 | orderId: {}", orderId);
+                    return new IllegalArgumentException("해당 주문에 대한 리뷰가 존재하지 않습니다. orderId: " + orderId);
+                });
+        
+        log.debug("✅ 주문 리뷰 조회 성공 | orderId: {} | reviewId: {} | rating: {}⭐", 
+                orderId, review.getId(), review.getRating());
+        
+        return new ReviewResponseDTO(review);
+    }
+    
+    /**
+     * 여러 주문의 리뷰 정보 batch 조회
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<Long, ReviewSummaryDTO> getReviewsByOrderIds(List<Long> orderIds, Long userId) {
+        log.info("🔍 Batch 리뷰 조회 시작 | orderIds: {} | userId: {}", orderIds.size(), userId);
+        
+        List<Review> reviews = reviewRepository.findByOrderIdInAndUserId(orderIds, userId);
+        
+        // 모든 주문 ID에 대해 초기화
+        java.util.Map<Long, ReviewSummaryDTO> result = new java.util.HashMap<>();
+        orderIds.forEach(orderId -> {
+            result.put(orderId, ReviewSummaryDTO.empty(orderId));
+        });
+        
+        // 실제 리뷰가 있는 주문들 업데이트
+        reviews.forEach(review -> {
+            result.put(review.getOrderId(), ReviewSummaryDTO.from(review));
+        });
+        
+        log.info("✅ Batch 리뷰 조회 완료 | 총 {}개 주문 중 {}개에 리뷰 존재", 
+                orderIds.size(), reviews.size());
+        
+        return result;
+    }
+    
+    /**
+     * 사용자의 모든 리뷰 조회 (마이페이지용)
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getMyReviews(Long userId) {
+        log.info("📋 사용자 리뷰 목록 조회 | userId: {}", userId);
+        
+        List<Review> reviews = reviewRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<ReviewResponseDTO> result = reviews.stream()
+                .map(ReviewResponseDTO::new)
+                .collect(Collectors.toList());
+        
+        log.info("✅ 사용자 리뷰 조회 완료 | userId: {} | 리뷰 수: {}개", userId, result.size());
+        
+        return result;
+    }
+
+    /**
+     * 주문 정보를 포함한 사용자의 모든 리뷰 조회 (마이페이지용)
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewWithOrderInfoDTO> getMyReviewsWithOrderInfo(Long userId) {
+        log.info("📋 주문 정보 포함 사용자 리뷰 목록 조회 | userId: {}", userId);
+        
+        List<Review> reviews = reviewRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<Long> orderIds = reviews.stream()
+                .map(Review::getOrderId)
+                .collect(Collectors.toList());
+        
+        // Order Service에서 주문 정보들을 batch로 조회
+        List<OrderInfoDTO> orderInfos;
+        try {
+            orderInfos = orderServiceClient.getOrdersByIds(orderIds);
+        } catch (Exception e) {
+            log.error("⚠️ Order Service 통신 실패 - Fallback으로 빈 주문 정보 반환 | userId: {} | error: {}", 
+                    userId, e.getMessage());
+            orderInfos = Collections.emptyList();
+        }
+        
+        // 주문 ID를 키로 하는 Map 생성
+        java.util.Map<Long, OrderInfoDTO> orderInfoMap = orderInfos.stream()
+                .collect(Collectors.toMap(OrderInfoDTO::getOrderId, orderInfo -> orderInfo));
+        
+        List<ReviewWithOrderInfoDTO> result = reviews.stream()
+                .map(review -> {
+                    OrderInfoDTO orderInfo = orderInfoMap.get(review.getOrderId());
+                    return new ReviewWithOrderInfoDTO(review, orderInfo);
+                })
+                .collect(Collectors.toList());
+        
+        log.info("✅ 주문 정보 포함 사용자 리뷰 조회 완료 | userId: {} | 리뷰 수: {}개", userId, result.size());
+        
+        return result;
     }
 }
