@@ -52,21 +52,19 @@ export function getUserIdFromToken() {
 }
 
 // JWT 토큰 유효성 검사
-export function isTokenValid() {
-  const accessToken = localStorage.getItem("accessToken");
-  
+export function isTokenValid(token) {
   // 토큰이 없거나 빈 문자열인 경우
-  if (!accessToken || accessToken === 'undefined' || accessToken === 'null') {
+  if (!token || token === 'undefined' || token === 'null') {
     return false;
   }
   
   // 토큰 형식 검증
-  if (!accessToken.includes('.')) {
+  if (!token.includes('.')) {
     return false;
   }
   
   try {
-    const parts = accessToken.split('.');
+    const parts = token.split('.');
     if (parts.length !== 3) {
       return false;
     }
@@ -92,7 +90,13 @@ export function isTokenValid() {
   }
 }
 
+// localStorage에서 토큰을 가져와서 유효성 검사
+export function isTokenValidFromStorage() {
+  const accessToken = localStorage.getItem("accessToken");
+  return isTokenValid(accessToken);
+}
+
 // 로그인 상태 확인
 export function isLoggedIn() {
-  return isTokenValid() && getUserIdFromToken() !== null;
+  return isTokenValidFromStorage() && getUserIdFromToken() !== null;
 } 

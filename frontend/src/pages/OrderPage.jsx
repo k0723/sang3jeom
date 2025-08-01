@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import Modal from "../components/Modal";
 import { getUserIdFromToken } from '../utils/jwtUtils';
+import api from '../utils/axiosInstance';
 
 const OrderPage = () => {
   const location = useLocation();
@@ -187,12 +188,8 @@ const OrderPage = () => {
       taxFreeAmount: 0
     };
     try {
-      const res = await fetch("http://localhost:8082/pay/ready", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      });
-      const data = await res.json();
+      const res = await api.post("/pay/ready", requestBody);
+      const data = res.data;
       if (data.next_redirect_pc_url) {
         sessionStorage.setItem("kakao_tid", data.tid);
         sessionStorage.setItem("partner_order_id", requestBody.partnerOrderId);
@@ -255,14 +252,10 @@ const OrderPage = () => {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
-    fetch("http://localhost:8080/users/me", {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    })
+    api.get("/users/me")
       .then(res => {
         console.log("[OrderPage] /me API status:", res.status);
-        return res.json();
+        return res.data;
       })
       .then(user => {
         console.log("[OrderPage] /me API user result:", user);

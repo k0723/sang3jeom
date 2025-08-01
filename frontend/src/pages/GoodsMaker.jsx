@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import ReviewForm from '../components/ReviewForm.jsx';
 import ReviewSection from '../components/ReviewSection';
 import { getUserIdFromToken } from '../utils/jwtUtils';
+import api from '../utils/axiosInstance';
 import { 
   ShoppingCart, 
   Download, 
@@ -206,17 +207,12 @@ export default function GoodsMaker() {
       console.log("AI 이미지 불러오기 시작, userId:", userId);
       
       try {
-        const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
-          headers: { 
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          }
-        });
+        const res = await api.get(`/api/ai-images/user/${userId}`);
           
         console.log("API 응답 상태:", res.status);
         
-        if (res.ok) {
-          const data = await res.json();
+        if (res.status === 200) {
+          const data = res.data;
           console.log("AI 이미지 데이터:", data);
           setAiImages(data);
           
@@ -746,19 +742,12 @@ export default function GoodsMaker() {
     const goodsId = selected.key; // 실제 goodsId로 대체 필요
     const quantityValue = quantity;
     try {
-      const res = await fetch("http://localhost:8080/cart", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          userId: userId,
-          goodsId: 0,
-          quantity: Number(quantity)
-        })
+      const res = await api.post("/cart", {
+        userId: userId,
+        goodsId: 0,
+        quantity: Number(quantity)
       });
-      const data = await res.json();
+      const data = res.data;
       if (data.cartId) {
         sessionStorage.setItem("cart_id", data.cartId);
         alert("장바구니에 추가되었습니다!");
@@ -803,30 +792,32 @@ export default function GoodsMaker() {
       formData.append('goodsType', goodsType);
       formData.append('file', file);
 
-      const res = await fetch('http://localhost:8080/api/user-goods', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: formData
-      });
-      if (res.ok) {
-        const savedGoodsData = await res.json();
-        alert('굿즈가 저장되었습니다!');
-        console.log('저장된 굿즈:', savedGoodsData);
-        
-        // 저장된 굿즈 정보 상태 업데이트
-        setSavedGoods(savedGoodsData);
-        setIsSaved(true);
-        
-        // 세션스토리지에 굿즈 정보 저장 (결제 완료 후 사용)
-        sessionStorage.setItem("savedGoodsId", savedGoodsData.id);
-        sessionStorage.setItem("savedGoodsImageUrl", savedGoodsData.imageUrl);
-        
-        // 굿즈 저장 완료 후 현재 페이지에 머무름
-      } else {
-        const err = await res.json();
-        alert('굿즈 저장 실패: ' + (err.message || '오류'));
+      try {
+        const res = await api.post('/api/user-goods', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        if (res.status === 200) {
+          const savedGoodsData = res.data;
+          alert('굿즈가 저장되었습니다!');
+          console.log('저장된 굿즈:', savedGoodsData);
+          
+          // 저장된 굿즈 정보 상태 업데이트
+          setSavedGoods(savedGoodsData);
+          setIsSaved(true);
+          
+          // 세션스토리지에 굿즈 정보 저장 (결제 완료 후 사용)
+          sessionStorage.setItem("savedGoodsId", savedGoodsData.id);
+          sessionStorage.setItem("savedGoodsImageUrl", savedGoodsData.imageUrl);
+          
+          // 굿즈 저장 완료 후 현재 페이지에 머무름
+        } else {
+          const err = res.data;
+          alert('굿즈 저장 실패: ' + (err.message || '오류'));
+        }
+      } catch (e) {
+        alert("굿즈 저장 중 오류 발생: " + e.message);
       }
     }, 'image/png');
   };

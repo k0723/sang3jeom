@@ -123,8 +123,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public JwtResponseDTO refresh(@RequestBody Map<String,String> body) {
-        String refreshToken = body.get("refreshToken");
+    public JwtResponseDTO refresh(@CookieValue(value = "refreshToken", required = false)String refreshToken) {
         if (refreshToken == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refreshToken is required");
         }

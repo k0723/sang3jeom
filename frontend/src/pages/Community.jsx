@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/axiosInstance';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
 import PostUploadModal from '../components/PostUploadModal';
@@ -39,13 +39,9 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
       const token = localStorage.getItem("accessToken");
       if (!token) return;
       
-      const response = await fetch("http://localhost:8080/users/me", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
+      const response = await api.get("/users/me");
+      if (response.status === 200) {
+        const userData = response.data;
         setCurrentUser(userData);
       }
     } catch (err) {
@@ -57,7 +53,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
   const fetchComments = async () => {
     try {
       setCommentLoading(true);
-      const response = await axios.get(`http://localhost:8083/comments/post/${post.id}`);
+      const response = await api.get(`/comments/post/${post.id}`);
       setComments(response.data);
     } catch (err) {
       console.error('댓글 조회 실패:', err);
@@ -72,13 +68,9 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!newComment.trim()) return;
     try {
       setLoading(true);
-      await axios.post(`http://localhost:8083/comments`, {
+      await api.post(`/comments`, {
         content: newComment,
         goodsPostId: Number(post.id)
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-        }
       });
       setNewComment('');
       await fetchComments();
@@ -95,14 +87,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.delete(
-        `http://localhost:8083/comments/${commentId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      await api.delete(`/comments/${commentId}`);
       await fetchComments();
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
@@ -125,17 +110,9 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!editCommentValue.trim()) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.put(
-        `http://localhost:8083/comments/${commentId}`,
-        {
-          content: editCommentValue
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      await api.put(`/comments/${commentId}`, {
+        content: editCommentValue
+      });
       setEditCommentId(null);
       setEditCommentValue('');
       await fetchComments();
@@ -321,11 +298,7 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
     ));
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.post(`/likes/${postId}`, {});
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -448,11 +421,8 @@ export default function Community() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
-    fetch("http://localhost:8080/users/me", {
-      headers: { "Authorization": `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(user => setUser(user))
+    api.get("/users/me")
+      .then(res => setUser(res.data))
       .catch(() => setUser(null));
   }, []);
 
@@ -472,28 +442,18 @@ export default function Community() {
 
     try {
       // AI 이미지 가져오기
-      const aiRes = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
-        headers: { 
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const aiRes = await api.get(`/api/ai-images/user/${userId}`);
       
-      if (aiRes.ok) {
-        const aiData = await aiRes.json();
+      if (aiRes.status === 200) {
+        const aiData = aiRes.data;
         setAiImages(aiData);
       }
 
       // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
-      const goodsRes = await fetch(`http://localhost:8080/api/saved-goods/user/${userId}`, {
-        headers: { 
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const goodsRes = await api.get(`/api/saved-goods/user/${userId}`);
       
-      if (goodsRes.ok) {
-        const goodsData = await goodsRes.json();
+      if (goodsRes.status === 200) {
+        const goodsData = goodsRes.data;
         if (goodsData.length > 0) {
           // 가장 최근에 저장된 굿즈의 이미지 URL 사용
           setGoodsImage(goodsData[0].imageUrl);
@@ -514,14 +474,10 @@ export default function Community() {
   const handleCreatePost = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.post('http://localhost:8083/goods-posts', {
+      await api.post('/goods-posts', {
         content,
         visibility,
         imageUrl: image
-      }, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
       });
       setCreateModalOpen(false);
       fetchPosts();
@@ -534,17 +490,13 @@ export default function Community() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8083/goods-posts');
+      const response = await api.get('/goods-posts');
       const sortedPosts = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       // 각 게시글에 대해 좋아요 상태 체크
       const token = localStorage.getItem("accessToken");
       const postsWithLike = await Promise.all(sortedPosts.map(async (post) => {
         try {
-          const res = await axios.get(`http://localhost:8083/likes/post/${post.id}/check`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
+          const res = await api.get(`/likes/post/${post.id}/check`);
           return { ...post, isLiked: res.data.liked };
         } catch {
           return { ...post, isLiked: false };
@@ -590,11 +542,7 @@ export default function Community() {
     ));
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.post(`http://localhost:8083/likes/${postId}`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.post(`/likes/${postId}`, {});
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -624,14 +572,10 @@ export default function Community() {
   const handleEditPost = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.put(`http://localhost:8083/goods-posts/${editTargetPost.id}`, {
+      await api.put(`/goods-posts/${editTargetPost.id}`, {
         content,
         imageUrl: image,
         status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
-      }, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
       });
       alert('수정되었습니다.');
       setEditModalOpen(false);
@@ -647,11 +591,7 @@ export default function Community() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.delete(`http://localhost:8083/goods-posts/${post.id}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      await api.delete(`/goods-posts/${post.id}`);
       alert('삭제되었습니다.');
       fetchPosts();
     } catch (err) {

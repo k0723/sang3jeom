@@ -16,7 +16,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef();
-  const { isLoggedIn, setIsLoggedIn } = useAuth();
+  const { isLoggedIn, setIsLoggedIn, isLoading } = useAuth();
   
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -55,6 +55,29 @@ const Navbar = () => {
   const avatarUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face';
 
   const logout = useLogout(setIsLoggedIn);
+
+  // 로딩 중일 때는 스켈레톤 UI 표시
+  if (isLoading) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200 rounded-b-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-11 h-11 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="hidden sm:block">
+                <div className="h-6 w-24 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-3 w-16 bg-gray-200 rounded animate-pulse mt-1"></div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
@@ -110,7 +133,7 @@ const Navbar = () => {
                   <LogIn className="w-4 h-4" /> 로그인
                 </Link>
                 <Link to="/signup" className="px-5 py-2 rounded-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow hover:from-blue-600 hover:to-purple-600 transition-all duration-200 flex items-center gap-1">
-                  <UserPlus className="w-4 h-4" /> 회원가입 수정
+                  <UserPlus className="w-4 h-4" /> 회원가입
                 </Link>
               </>
             ) : (

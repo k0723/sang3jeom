@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import api from "../utils/axiosInstance";
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -32,24 +32,15 @@ export default function OrderComplete() {
     if (!token) return;
     
     // 사용자 정보 가져오기
-    fetch("http://localhost:8080/users/me", {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    })
-      .then(res => res.json())
+    api.get("/users/me")
+      .then(res => res.data)
       .then(user => {
         setUser(user);
         
         // AI 이미지 가져오기
-        return fetch(`http://localhost:8080/api/ai-images/user/${user.id}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
+        return api.get(`/api/ai-images/user/${user.id}`);
       })
-      .then(res => res.json())
+      .then(res => res.data)
       .then(images => {
         setAiImages(images);
       })
@@ -63,17 +54,12 @@ export default function OrderComplete() {
   const handlePost = async (post) => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.post(
-        "http://localhost:8083/goods-posts",
+      const response = await api.post(
+        "/goods-posts",
         {
           content: post.content,
           imageUrl: post.image || "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", // 테스트용 이미지 URL
           status: "ALL"
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
         }
       );
       
