@@ -42,15 +42,15 @@ public class TokenService {
     public void writeTokensAsCookies(JwtResponseDTO tokens, HttpServletResponse res) {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokens.getAccessToken())
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(tokens.getAccessExpiresIn()/1000)
                 .build();
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokens.getRefreshToken())
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(true)
+                .sameSite("None")
                 .path("/")
                 .maxAge(tokens.getRefreshExpiresIn()/1000)
                 .build();
