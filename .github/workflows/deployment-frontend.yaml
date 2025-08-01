@@ -1,0 +1,64 @@
+# .github/workflows/deploy-frontend.yml
+
+# 워크플로우의 이름
+name: Deploy Frontend to S3
+
+# 워크플로우가 실행될 조건
+on:
+  push:
+    branches:
+      - dev  # dev 브랜치에 푸시될 때 실행
+    paths:
+      - 'frontend/**' # frontend 디렉토리 또는 하위 파일이 변경되었을 때만 실행
+
+# 워크플로우에서 실행될 작업(Job) 목록
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # 작업이 실행될 가상 환경
+    defaults:
+      run:
+        working-directory: ./frontend # 모든 run 명령어의 기본 작업 디렉토리를 frontend로 설정
+
+    steps:
+      # 1. 소스 코드 체크아웃
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # 프로젝트에 맞는 Node.js 버전 명시
+          cache: 'npm' # npm 의존성 캐싱 활성화
+          cache-dependency-path: frontend/package-lock.json # 캐시 키 생성에 사용할 파일 경로
+
+      # 3. 의존성 설치
+      - name: Install dependencies
+        run: npm install
+
+      # 4. 프로덕션 빌드
+      - name: Build project
+        run: npm run build
+        # REACT_APP_API_URL과 같은 환경변수가 필요하다면 여기에 추가
+        # env:
+        #   REACT_APP_API_URL: ${{ secrets.API_URL }}
+
+      # 5. AWS 자격 증명 구성
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2 # 사용하는 AWS 리전
+
+      # 6. S3에 빌드 결과물 업로드
+      - name: Upload to S3
+        run: |
+          aws s3 sync ./dist s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
+
+      # 7. (선택) CloudFront 캐시 무효화
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"

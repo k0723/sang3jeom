@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("api/images")
+@RequestMapping("/api/images")
 @Slf4j
 @RequiredArgsConstructor
 public class ImageController {

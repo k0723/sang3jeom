@@ -15,7 +15,7 @@ public interface UserServiceClient {
 
     /**
      * User Service의 실제 API: GET /users/{id}
-     * User Service가 쿠키 기반 인증을 사용하지만, 서비스 간 통신에서는 별도 처리 필요
+     * 현재는 다른 개발자가 작업 중이므로 Fallback 사용
      * @param userId 조회할 사용자의 ID
      * @return 사용자 정보 DTO
      */

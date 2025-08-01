@@ -16,22 +16,26 @@ public class UserServiceClientFallback implements UserServiceClient {
 
     @Override
     public UserInfoDTO getUserById(Long userId) {
-        log.warn("⚠️ User Service 호출 실패 - Fallback 실행 | userId: {}", userId);
+        log.info("🔧 User Service Fallback 실행 | userId: {} | reason: 다른 개발자 작업 중", userId);
         
-        // 개발/테스트 환경에서는 Mock 데이터 반환
-        if ("local".equals(activeProfile) || "dev".equals(activeProfile)) {
-            log.info("🧪 개발환경 - Mock 사용자 데이터 반환 | userId: {}", userId);
-            return UserInfoDTO.builder()
-                    .id(userId)
-                    .email("mock.user" + userId + "@example.com")
-                    .name("Mock User " + userId)
-                    .phone("010-0000-" + String.format("%04d", userId % 10000))
-                    .profileImageUrl(null)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-        }
+        // 개발용 Mock 데이터 반환
+        String[] mockNames = {
+            "김민수", "이영희", "박철수", "최수진", "정다영", 
+            "황준호", "임서연", "조민우", "한지은", "신동혁"
+        };
         
-        // 운영환경에서는 예외 발생
-        throw new RuntimeException("User Service가 현재 이용 불가능합니다. 잠시 후 다시 시도해주세요.");
+        int nameIndex = (int) (userId % mockNames.length);
+        String mockName = mockNames[nameIndex];
+        
+        log.debug("🎭 Fallback Mock 데이터 생성 | userId: {} | mockName: {}", userId, mockName);
+        
+        return UserInfoDTO.builder()
+                .id(userId)
+                .email("mock.user" + userId + "@example.com")
+                .name(mockName)
+                .phone("010-" + String.format("%04d", userId % 10000) + "-" + String.format("%04d", (userId * 7) % 10000))
+                .profileImageUrl(null)
+                .createdAt(LocalDateTime.now().minusDays(userId % 365)) // 다양한 가입일
+                .build();
     }
 }

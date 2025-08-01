@@ -16,7 +16,7 @@ const ReviewCard = ({ review }) => (
                 </span>
             </div>
             <span className="text-sm text-gray-500">
-                {review.userName || '익명'}
+                {review.userName || `사용자${review.userId}` || '익명'}
             </span>
         </div>
         
@@ -70,36 +70,106 @@ export default function ReviewSection({ productId }) {
         setLoading(true);
         
         try {
-            // productId가 있으면 특정 상품의 리뷰, 없으면 전체 리뷰
-            const endpoint = productId 
-                ? `product/${productId}/reviews`
-                : 'reviews';
-                
+            console.log('리뷰 로딩 시작:', { pageNum, size, productId });
+            console.log('현재 baseURL:', reviewAPIService);
+            
+            // 전체 리뷰 조회 (productId가 없을 때)
             const response = await reviewAPIService.getReviews({
                 page: pageNum,
                 size: size,
-                productId: productId
+                sortBy: 'createdAt',
+                sortDir: 'desc'
+                // productId는 전달하지 않음 - 전체 리뷰 조회이므로
             });
+
+            console.log('리뷰 API 응답:', response);
 
             if (response && response.content) {
                 if (isInitial) {
                     setReviews(response.content);
                     setTotalReviews(response.totalElements || 0);
-                    setAverageRating(response.averageRating || 0);
+                    // averageRating은 백엔드에서 제공하지 않으므로 클라이언트에서 계산
+                    const avgRating = response.content.length > 0 
+                        ? response.content.reduce((sum, review) => sum + review.rating, 0) / response.content.length 
+                        : 0;
+                    setAverageRating(avgRating);
                 } else {
                     setReviews(prev => [...prev, ...response.content]);
                 }
                 
                 setHasMore(!response.last);
                 setPage(pageNum + 1);
+            } else {
+                // 응답이 빈 배열인 경우도 처리
+                console.log('응답 데이터가 없습니다');
+                if (isInitial) {
+                    setReviews([]);
+                    setTotalReviews(0);
+                    setAverageRating(0);
+                }
+                setHasMore(false);
             }
         } catch (error) {
             console.error("리뷰 로딩 실패:", error);
-            // 에러 시 빈 상태로 설정
-            if (isInitial) {
-                setReviews([]);
-                setTotalReviews(0);
-                setAverageRating(0);
+            console.error("에러 상세:", {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                headers: error.response?.headers,
+                config: error.config
+            });
+            
+            // 서버 에러 시 임시 Mock 데이터 표시 (개발용)
+            if (isInitial && process.env.NODE_ENV === 'development') {
+                console.log('임시 Mock 데이터 사용');
+                const mockReviews = [
+                    {
+                        id: 1,
+                        userName: "김민수",
+                        rating: 5,
+                        content: "정말 만족스러운 상품이에요! 품질도 좋고 배송도 빨라서 감사합니다.",
+                        imageUrls: [],
+                        createdAt: "2025-07-30T10:30:00"
+                    },
+                    {
+                        id: 2,
+                        userName: "이영희",
+                        rating: 4,
+                        content: "전체적으로 만족합니다. 가격 대비 품질이 좋네요.",
+                        imageUrls: [],
+                        createdAt: "2025-07-29T15:20:00"
+                    },
+                    {
+                        id: 3,
+                        userName: "박철수",
+                        rating: 5,
+                        content: "배송도 빠르고 제품도 기대 이상입니다. 추천해요!",
+                        imageUrls: [],
+                        createdAt: "2025-07-28T09:15:00"
+                    },
+                    {
+                        id: 4,
+                        userName: "최수진",
+                        rating: 4,
+                        content: "좋은 상품입니다. 다음에도 주문할게요.",
+                        imageUrls: [],
+                        createdAt: "2025-07-27T14:45:00"
+                    }
+                ];
+                
+                setReviews(mockReviews);
+                setTotalReviews(mockReviews.length);
+                setAverageRating(4.5);
+                setHasMore(false);
+            } else {
+                // 에러 시 빈 상태로 설정
+                if (isInitial) {
+                    setReviews([]);
+                    setTotalReviews(0);
+                    setAverageRating(0);
+                }
+                setHasMore(false);
             }
         } finally {
             setLoading(false);

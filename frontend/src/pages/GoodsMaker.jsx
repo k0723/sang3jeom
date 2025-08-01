@@ -1142,7 +1142,6 @@ export default function GoodsMaker() {
             </motion.div>
 
             {/* Reviews Section */}
-            <ReviewForm />
 
             <ReviewSection />
 
