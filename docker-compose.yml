@@ -1,71 +1,196 @@
-version: '3.8'
-
 services:
+  # Database Services (옵션: 로컬 MySQL을 쓸 경우 아래 블록을 해제하세요)
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: sang3jeom-mysql
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${SPRING_SPRING_DATASOURCE_PASSWORD}
+  #     MYSQL_DATABASE: ${RDS_DB_NAME}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #     - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  #   networks:
+  #     - sang3jeom-network
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     timeout: 20s
+  #     retries: 10
+  redis:
+    image: redis:7-alpine
+    container_name: sang3jeom-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sang3jeom-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 10s
+      retries: 5
+  # Backend Services
   user-service:
     build:
       context: ./backend/user-service
       dockerfile: Dockerfile
+      platforms: [ "linux/amd64", "linux/arm64" ]
+    container_name: sang3jeom-user-service
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      # 통일된 JDBC URL (RDS 또는 로컬 mysql 모두 사용 가능)
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=UTC
+      # 기존에 애플리케이션에서 참조할 수 있는 키도 유지
+      # - RDS_ENDPOINT=${RDS_ENDPOINT}
+      - RDS_DB_NAME=${RDS_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_MS=${JWT_EXPIRATION_MS}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - BASE_URL=${BASE_URL}
     ports:
       - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      # RDS 연결
-      DATASOURCE_URL: jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      DATASOURCE_USERNAME: ${RDS_USERNAME}
-      DATASOURCE_PASSWORD: ${RDS_PASSWORD}
-      # Redis 연결
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    volumes:
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/docker-start.sh", "user-service", "8080"]
     depends_on:
-      - redis
-
+      redis:
+        condition: service_healthy
+    networks:
+      - sang3jeom-network
+    restart: unless-stopped
   community-service:
     build:
       context: ./backend/community-service
       dockerfile: Dockerfile
+      platforms: [ "linux/amd64", "linux/arm64" ]
+    container_name: sang3jeom-community-service
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      - USER_SERVICE_URL=http://user-service:8080
     ports:
       - "8083:8083"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DATASOURCE_URL: jdbc:mysql://${RDS_ENDPOINT}:3306/${COMMUNITY_DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      DATASOURCE_USERNAME: ${RDS_USERNAME}
-      DATASOURCE_PASSWORD: ${RDS_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    volumes:
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/docker-start.sh", "community-service", "8083"]
     depends_on:
-      - redis
-
+      user-service:
+        condition: service_started
+    networks:
+      - sang3jeom-network
+    restart: unless-stopped
   order-service:
     build:
       context: ./backend/order-service
       dockerfile: Dockerfile
+      platforms: [ "linux/amd64", "linux/arm64" ]
+    container_name: sang3jeom-order-service
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      - USER_SERVICE_URL=http://user-service:8080
     ports:
       - "8082:8082"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DATASOURCE_URL: jdbc:mysql://${RDS_ENDPOINT}:3306/${ORDER_DB_NAME}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-      DATASOURCE_USERNAME: ${RDS_USERNAME}
-      DATASOURCE_PASSWORD: ${RDS_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    volumes:
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/docker-start.sh", "order-service", "8082"]
     depends_on:
-      - redis
-
+      user-service:
+        condition: service_started
+    networks:
+      - sang3jeom-network
+    restart: unless-stopped
+  review-service:
+    build:
+      context: ./backend/review-service
+      dockerfile: Dockerfile
+      platforms: [ "linux/amd64", "linux/arm64" ]
+    container_name: sang3jeom-review-service
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${RDS_ENDPOINT}:3306/${RDS_DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      - USER_SERVICE_URL=http://user-service:8080
+      - AWS_CREDENTIALS_ACCESS-KEY=${AWS_ACCESS_KEY}
+      - AWS_CREDENTIALS_SECRET-KEY=${AWS_SECRET_KEY}
+      - AWS_S3_BUCKET=${S3_BUCKET}
+      - AWS_REGION=${S3_REGION}
+    ports:
+      - "8084:8084"
+    volumes:
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/docker-start.sh", "review-service", "8084"]
+    depends_on:
+      user-service:
+        condition: service_started
+    networks:
+      - sang3jeom-network
+    restart: unless-stopped
   image-service:
     build:
       context: ./backend/image-service
       dockerfile: Dockerfile
+      platforms: [ "linux/amd64", "linux/arm64" ]
+    container_name: sang3jeom-image-service
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      - UPLOAD_DIR=/app/uploads
+      - OUTPUT_DIR=/app/outputs
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
     ports:
       - "8000:8000"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7
-    container_name: redis
-    ports:
-      - "6379:6379"
+    volumes:
+      - image_uploads:/app/uploads
+      - image_outputs:/app/outputs
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/docker-start.sh", "image-service", "8000"]
+    networks:
+      - sang3jeom-network
+    restart: unless-stopped
+  # Frontend는 별도로 배포되어 있음
+# Networks
+networks:
+  sang3jeom-network:
+    driver: bridge
+# Volumes
+volumes:
+  redis_data:
+    driver: local
+  image_uploads:
+    driver: local
+  image_outputs:
+    driver: local
