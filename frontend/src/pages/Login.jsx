@@ -11,14 +11,16 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useAuth } from "../utils/useAuth";
 
-const Login = ({ setIsLoggedIn }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { setIsLoggedIn } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

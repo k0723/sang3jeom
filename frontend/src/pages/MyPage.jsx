@@ -21,9 +21,11 @@ import {
 import Navbar from '../components/Navbar';
 import { useNavigate, Link } from 'react-router-dom';
 import ReviewModal from '../components/ReviewModal';
+import { useAuth } from "../utils/useAuth";
 
-const MyPage = ({ setIsLoggedIn }) => {
+const MyPage = () => {
 
+  const { setIsLoggedIn } = useAuth();
   const navigate = useNavigate();
   const logout = useLogout(setIsLoggedIn);
   const [user, setUser] = useState(null);

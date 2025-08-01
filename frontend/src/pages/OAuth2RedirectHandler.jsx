@@ -2,10 +2,12 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from "../utils/useAuth";
 
-const OAuth2RedirectHandler = ({ setIsLoggedIn }) => {           // :contentReference[oaicite:0]{index=0}
+const OAuth2RedirectHandler = () => {           // :contentReference[oaicite:0]{index=0}
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+   const { setIsLoggedIn } = useAuth();
  useEffect(() => {
     (async () => {
       try {
