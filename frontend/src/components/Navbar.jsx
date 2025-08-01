@@ -7,14 +7,16 @@ import {
 import Modal from './Modal';
 import reactImg from '../assets/react.svg';
 import { useLogout } from '../utils/useLogout';
+import { useAuth } from '../utils/useAuth';
 
-const Navbar = ({ isLoggedIn, setIsLoggedIn }) => {
+const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef();
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
   
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
