@@ -30,7 +30,7 @@ const goodsList = [
   { 
     key: "mug", 
     label: "머그컵", 
-    price: "3,500원~",
+    price: "3500",
     minQuantity: "50개",
     description: "세라믹 머그컵",
     features: ["고급 세라믹 소재", "식기세척기 사용 가능", "내열성 우수"],
@@ -39,7 +39,7 @@ const goodsList = [
   { 
     key: "tshirt", 
     label: "티셔츠", 
-    price: "7,040원~",
+    price: "7040",
     minQuantity: "1개",
     description: "반팔 티셔츠",
     features: ["100% 면 소재", "다양한 사이즈", "내구성 우수"],
@@ -48,7 +48,7 @@ const goodsList = [
   { 
     key: "ecobag", 
     label: "에코백", 
-    price: "4,500원~",
+    price: "4500",
     minQuantity: "50개",
     description: "면 에코백",
     features: ["100% 면 소재", "내구성 우수", "환경 친화적"],
@@ -57,7 +57,7 @@ const goodsList = [
   {
     key: "case",
     label: "폰케이스",
-    price: "4,500원~",
+    price: "12900",
     minQuantity: "50개",
     description: "하드 케이스",
     features: ["충격 흡수", "정밀 커팅", "다양한 기종"],
@@ -668,8 +668,9 @@ export default function GoodsMaker() {
   };
 
   const calculatePrice = () => {
-    const basePrice = parseInt(selected.price.replace(/[^0-9]/g, ''));
-    return (basePrice * quantity).toLocaleString();
+    const basePrice = parseInt(selected.price);
+    const totalPrice = basePrice * quantity;
+    return totalPrice.toLocaleString();
   };
 
   // 결제창 띄우기 함수
@@ -717,7 +718,7 @@ export default function GoodsMaker() {
       name: selected.label,
       desc: selected.description,
       option: `${quantity}개`,
-      price: parseInt(selected.price.replace(/[^0-9]/g, '')),
+      price: parseInt(selected.price),
       image: savedGoods.imageUrl, // 저장된 굿즈의 S3 이미지 URL 사용
       quantity: quantity,
       savedGoodsId: savedGoods.id // 저장된 굿즈 ID 추가
@@ -879,7 +880,7 @@ export default function GoodsMaker() {
                       className="w-full h-24 object-cover rounded-lg mb-2"
                     />
                     <div className="text-sm font-semibold text-gray-800">{item.label}</div>
-                    <div className="text-xs text-gray-600">{item.price}</div>
+                    <div className="text-xs text-gray-600">{parseInt(item.price).toLocaleString()}원~</div>
                   </motion.button>
                 ))}
               </div>
