@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-
+import api from '../utils/axiosInstance';
 
 
 export default function CharacterMaker({ onDone }) {
@@ -64,15 +64,10 @@ export default function CharacterMaker({ onDone }) {
         return;
       }
       
-      const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
-        headers: { 
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const res = await api.get(`/api/ai-images/user/${userId}`);
       
-      if (res.ok) {
-        const data = await res.json();
+      if (res.status === 200) {
+        const data = res.data;
         setAiImageCount(data.length);
         console.log("현재 AI 이미지 개수:", data.length);
       } else {
@@ -148,12 +143,9 @@ export default function CharacterMaker({ onDone }) {
     const prompt = `Draw a cute pet as a ${style} character.`;
     formData.append("prompt", prompt);
 
-    const res = await fetch("http://localhost:8000/generate-character", {
-      method: "POST",
-      body: formData,
-    });
-    if (!res.ok) throw new Error("AI 변환 실패");
-    return await res.json();
+    const res = await api.post("http://localhost:8000/generate-character", formData);
+    if (res.status !== 200) throw new Error("AI 변환 실패");
+    return res.data;
   }
 
   const handleSubmit = async (e) => {
@@ -228,25 +220,23 @@ export default function CharacterMaker({ onDone }) {
     }
     
     // result.result_url이 URL일 경우, Blob으로 변환
-    const response = await fetch(result.result_url);
+    const response = await api.get(result.result_url);
     const blob = await response.blob();
     const file = new File([blob], "ai_character.png", { type: blob.type });
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await fetch("http://localhost:8080/api/ai-images", {
-      method: "POST",
+    const res = await api.post("/api/ai-images", formData, {
       headers: {
-        "Authorization": `Bearer ${accessToken}`
-      },
-      body: formData
+        "Content-Type": "multipart/form-data"
+      }
     });
-    if (res.ok) {
+    if (res.status === 200) {
       alert("이미지 저장 성공!");
       // AI 이미지 개수 증가
       setAiImageCount(prev => prev + 1);
     } else {
-      const err = await res.json();
+      const err = res.data;
       alert(err.message || "저장 실패");
     }
   };

@@ -68,7 +68,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
          tokenService.writeTokensAsCookies(tokens, response);
 
         // ✅ Access Token만 URL로 전달
-        String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth2/redirect")
+        String redirectUrl = UriComponentsBuilder.fromUriString("https://sang3jeom.com/oauth2/redirect")
                 .queryParam("accessToken", tokens.getAccessToken()) // 프론트에서 읽어서 로컬스토리지에 저장
                 .build()
                 .toUriString();
