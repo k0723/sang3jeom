@@ -139,10 +139,12 @@ services:
       - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
       - USER_SERVICE_URL=http://user-service:8080
-      - AWS_CREDENTIALS_ACCESS-KEY=${AWS_ACCESS_KEY}
-      - AWS_CREDENTIALS_SECRET-KEY=${AWS_SECRET_KEY}
-      - AWS_S3_BUCKET=${S3_BUCKET}
-      - AWS_REGION=${S3_REGION}
+      - SERVICE_URLS_USER_SERVICE=http://user-service:8080
+      - SERVICE_URLS_ORDER_SERVICE=http://order-service:8082
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
     ports:
       - "8084:8084"
     volumes:
@@ -150,6 +152,8 @@ services:
     command: ["sh", "/scripts/docker-start.sh", "review-service", "8084"]
     depends_on:
       user-service:
+        condition: service_started
+      order-service:
         condition: service_started
     networks:
       - sang3jeom-network
