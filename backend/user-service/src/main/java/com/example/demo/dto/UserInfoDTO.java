@@ -1,23 +1,18 @@
 package com.example.demo.dto;
 
 import com.example.demo.domain.UserEntity;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Data
-@Getter        // ← 필드별로 getter를 자동 생성
-@Setter 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserInfoDTO {
     private Long id;
+    private String username;          // ✅ gRPC 응답용
+    private String role;              // ✅ gRPC 응답용
     private String email;
     private String name;
     private String phone;
@@ -27,6 +22,8 @@ public class UserInfoDTO {
     public static UserInfoDTO userInfo(UserEntity u) {
         return UserInfoDTO.builder()
                          .id(u.getId())
+                         .username(u.getUsername())        // ✅ 추가
+                         .role(u.isRoles() ? "ADMIN" : "USER")         // ✅ Enum → String
                          .email(u.getEmail())
                          .name(u.getName())
                          .phone(u.getPhone())
@@ -34,5 +31,4 @@ public class UserInfoDTO {
                          .createdAt(u.getCreatedAt())
                          .build();
     }
-
 }

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
 import { getUserIdFromToken } from '../utils/jwtUtils';
 import { reviewAPIService } from '../utils/reviewAPI';
-import axios from 'axios';
+import api from '../utils/axiosInstance';
 import { 
   User, 
   ShoppingBag, 
@@ -139,17 +139,7 @@ const MyPage = () => {
   // 주문 통계 가져오기
   const fetchOrderStats = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        console.log("JWT 토큰이 없습니다. 주문 통계를 불러올 수 없습니다.");
-        return;
-      }
-
-      const response = await axios.get('http://localhost:8082/orders/my-stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/orders/my-stats');
       
       console.log("주문 통계:", response.data);
       setOrderStats(response.data);
@@ -172,11 +162,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await axios.get('http://localhost:8083/goods-posts/my-posts', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/goods-posts/my-posts');
       
       console.log("내가 쓴 글:", response.data);
       setMyPosts(response.data);
@@ -238,11 +224,7 @@ const MyPage = () => {
       if (token) {
         try {
           console.log("🔄 주문 내역 API 호출 중...");
-          const ordersResponse = await axios.get('http://localhost:8082/orders/my-orders', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const ordersResponse = await api.get('/orders/my-orders');
           
           console.log("📦 주문 내역 원본 데이터:", ordersResponse.data);
           console.log("📊 주문 개수:", ordersResponse.data?.length || 0);
@@ -342,38 +324,33 @@ const MyPage = () => {
     
     try {
       console.log("굿즈 조회 API 호출 - userId:", userId);
-      const res = await fetch(`http://localhost:8080/api/user-goods?userId=${userId}`, {
-        headers: { 
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await api.get(`/api/user-goods?userId=${userId}`);
       
       console.log("굿즈 조회 API 응답 상태:", res.status);
       
-                        if (res.ok) {
-                    const data = await res.json();
-                    console.log("굿즈 데이터:", data);
-                    console.log("굿즈 개수:", data.length);
-                    
-                    // 각 굿즈의 상세 정보 로깅
-                    data.forEach((goods, index) => {
-                      console.log(`굿즈 ${index + 1}:`, {
-                        id: goods.id,
-                        goodsType: goods.goodsType,
-                        imageUrl: goods.imageUrl,
-                        createdAt: goods.createdAt,
-                        userId: goods.userId,
-                        userName: goods.userName
-                      });
-                    });
-                    
-                    setMyGoods(data);
-                  } else {
-                    console.error("굿즈 불러오기 실패:", res.status);
-                    const errorText = await res.text();
-                    console.error("에러 내용:", errorText);
-                  }
+      if (res.status === 200) {
+        const data = res.data;
+        console.log("굿즈 데이터:", data);
+        console.log("굿즈 개수:", data.length);
+        
+        // 각 굿즈의 상세 정보 로깅
+        data.forEach((goods, index) => {
+          console.log(`굿즈 ${index + 1}:`, {
+            id: goods.id,
+            goodsType: goods.goodsType,
+            imageUrl: goods.imageUrl,
+            createdAt: goods.createdAt,
+            userId: goods.userId,
+            userName: goods.userName
+          });
+        });
+        
+        setMyGoods(data);
+      } else {
+        console.error("굿즈 불러오기 실패:", res.status);
+        const errorText = await res.text();
+        console.error("에러 내용:", errorText);
+      }
     } catch (error) {
       console.error("굿즈 불러오기 오류:", error);
     }
@@ -394,11 +371,7 @@ const MyPage = () => {
       }
 
       console.log("🔄 주문내역 API 호출 중...");
-      const response = await axios.get('http://localhost:8082/orders/my-orders', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/orders/my-orders');
       
       console.log("📦 주문내역 API 응답:", response.data);
       console.log("📊 주문 개수:", response.data?.length || 0);
@@ -530,12 +503,7 @@ const MyPage = () => {
     try {
       // JWT 토큰 확인 - localStorage에서 가져오기
 
-      const res = await axios.get(
-        'http://localhost:8080/users/me',
-        { 
-          withCredentials: true,
-        }
-      );
+      const res = await api.get('/users/me');
       
       console.log("사용자 정보:", res.data);
       setUser(res.data);
@@ -577,16 +545,7 @@ const MyPage = () => {
       }
 
       console.log('ABOUT TO CALL API');
-      const res = await axios.put(
-        'http://localhost:8080/users/me',
-        {name, email, phone },
-        { 
-          withCredentials: true,
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }
-      );
+      const res = await api.put('/users/me', {name, email, phone });
       await handleUserInfo();
       alert('프로필이 성공적으로 수정되었습니다.')
     } catch (err) {
@@ -606,10 +565,7 @@ const MyPage = () => {
   const handleprofiledelete = async () => {
     try {
       console.log('ABOUT TO CALL API');
-      const res = await axios.delete(
-        `http://localhost:8080/users/me`,
-        { withCredentials: true }
-      )
+      const res = await api.delete('/users/me')
       console.log('API RESPONSE', res.data);
       await logout();
       // 3) React 상태 동기화
@@ -633,16 +589,7 @@ const MyPage = () => {
         alert("JWT 토큰이 없습니다.");
         return;
       }
-      const res = await axios.put(
-        'http://localhost:8080/users/me/password',
-        { currentPassword, newPassword },
-        { 
-          withCredentials: true,
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }
-      );
+      const res = await api.put('/users/me/password', { currentPassword, newPassword });
       alert('비밀번호가 성공적으로 변경되었습니다.');
       setShowPasswordForm(false);
       setCurrentPassword('');
@@ -667,11 +614,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await axios.delete(`http://localhost:8083/goods-posts/${postId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.delete(`/goods-posts/${postId}`);
 
       if (response.status === 200) {
         alert('글이 성공적으로 삭제되었습니다.');
@@ -933,19 +876,14 @@ const MyPage = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:8080/api/user-goods/${goodsId}?userId=${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const response = await api.delete(`/api/user-goods/${goodsId}?userId=${userId}`);
 
-      if (response.ok) {
+      if (response.status === 200) {
         alert('굿즈가 성공적으로 삭제되었습니다.');
         // 굿즈 목록에서 삭제된 굿즈 제거
         setMyGoods(prevGoods => prevGoods.filter(goods => goods.id !== goodsId));
       } else {
-        const errorData = await response.json();
+        const errorData = response.data;
         alert('삭제 실패: ' + (errorData.message || '알 수 없는 오류가 발생했습니다.'));
       }
     } catch (error) {
@@ -975,34 +913,23 @@ const MyPage = () => {
       console.log("AI 이미지 삭제:", { imageId, userId });
 
       // 방법 1: 쿼리 파라미터로 userId 전송
-      const res = await fetch(`http://localhost:8080/api/ai-images/${imageId}?userId=${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await api.delete(`/api/ai-images/${imageId}?userId=${userId}`);
 
-      if (res.ok) {
+      if (res.status === 200) {
         alert('AI 캐릭터가 성공적으로 삭제되었습니다.');
         // 이미지 목록에서 삭제된 이미지 제거
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await fetch(`http://localhost:8080/api/ai-images/${imageId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ userId })
+        const res2 = await api.delete(`/api/ai-images/${imageId}`, {
+          data: { userId }
         });
 
-        if (res2.ok) {
+        if (res2.status === 200) {
           alert('AI 캐릭터가 성공적으로 삭제되었습니다.');
           setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
         } else {
-          const errorData = await res2.json();
+          const errorData = res2.data;
           alert('삭제 실패: ' + (errorData.message || '알 수 없는 오류가 발생했습니다.'));
         }
       }
@@ -1030,15 +957,10 @@ const MyPage = () => {
           }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
-            headers: { 
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json"
-            }
-          });
+          const res = await api.get(`/api/ai-images/user/${userId}`);
           
-          if (res.ok) {
-            const data = await res.json();
+          if (res.status === 200) {
+            const data = res.data;
             console.log("AI 이미지 데이터:", data);
             setAiImages(data);
           } else {

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.example.demo.grpc";
+option java_outer_classname = "UserProto";
+
+service UserService {
+    // gRPC 메서드: GetUser
+    rpc GetUser (GetUserRequest) returns (UserInfoResponse);
+}
+
+// 요청 메시지
+message GetUserRequest {
+    int64 user_id = 1; // Java: getUserId()
+}
+
+// 응답 메시지
+message UserInfoResponse {
+    int64 id = 1;
+    string username = 2;
+    string role = 3;
+}

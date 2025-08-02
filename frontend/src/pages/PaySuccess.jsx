@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from 'js-cookie';
+import api from '../utils/axiosInstance';
 
 export default function PaySuccess() {
   const location = useLocation();
@@ -61,35 +62,22 @@ export default function PaySuccess() {
     });
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
-      fetch("http://localhost:8082/pay/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tid,
-          partner_order_id,
-          partner_user_id,
-          pg_token
-        })
+      api.post("/pay/approve", {
+        tid,
+        partner_order_id,
+        partner_user_id,
+        pg_token
       })
-        .then(res => res.json())
         .then(data => {
           const token = localStorage.getItem("accessToken");
-          fetch("http://localhost:8082/orders/direct", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              goodsId: finalGoodsId,
-              goodsName: finalGoodsName,
-              quantity: quantityValue,
-              address: addressValue,
-              memo: memo,
-              price: price ? Number(price) : 1
-            })
+          api.post("/orders/direct", {
+            goodsId: finalGoodsId,
+            goodsName: finalGoodsName,
+            quantity: quantityValue,
+            address: addressValue,
+            memo: memo,
+            price: price ? Number(price) : 1
           })
-            .then(res => res.json())
             .then(orderData => {
                 // 세션스토리지에서 굿즈 정보 가져오기
                 const savedGoodsId = sessionStorage.getItem("savedGoodsId");
@@ -99,7 +87,7 @@ export default function PaySuccess() {
                 
                 navigate("/order-complete", {
                   state: {
-                    orderId: orderData.orderId || partner_order_id,
+                    orderId: orderData.data.orderId || partner_order_id,
                     receiver,
                     phone,
                     address: addressValue, // 합쳐진 주소 전달
