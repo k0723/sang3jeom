@@ -6,6 +6,22 @@ spring:
   redis:
     host: localhost
     port: 6379
+  
+  
+# Email Configuration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
 
 
   datasource:
@@ -107,4 +123,13 @@ cloud:
       static: ${S3_REGION}
     s3:
       bucket: ${S3_BUCKET}
+
+# Email Verification Configuration
+app:
+  email:
+    verification:
+      subject: 상삼점(상점) 이메일 인증 코드
+      code-length: 6
+      expiration-minutes: 10
+      max-attempts: 5
 
