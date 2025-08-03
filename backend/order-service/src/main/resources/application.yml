@@ -4,7 +4,6 @@ spring:
     username: ${ORDER_DB_USERNAME}
     password: ${ORDER_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
     hikari:
       maximum-pool-size: 3       # 최대 연결 수를 3으로 줄임
       minimum-idle: 1            # 최소 유휴 연결 수

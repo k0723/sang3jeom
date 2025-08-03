@@ -4,6 +4,12 @@ spring:
     username: ${COMMUNITY_DB_USERNAME}
     password: ${COMMUNITY_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 3       # 서비스당 최대 10개
+      minimum-idle: 2
+      idle-timeout: 30000         # 30초
+      max-lifetime: 600000        # 10분
+      connection-timeout: 30000
 
   jpa:
     hibernate:
