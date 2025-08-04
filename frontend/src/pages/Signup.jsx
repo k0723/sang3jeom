@@ -73,7 +73,7 @@ const isValidName = (name) => name.trim().length >= 2;
       return;
     }
     try {
-      await authApi.post('/api/v1/email-verification/send', { email: formData.email });
+      await authApi.post('/users/email-verification/send', { email: formData.email });
       setIsVerificationCodeSent(true);
       setVerificationError('인증 코드가 발송되었습니다. 이메일을 확인해주세요.');
     } catch (error) {
@@ -83,7 +83,7 @@ const isValidName = (name) => name.trim().length >= 2;
 
   const handleConfirmVerificationCode = async () => {
     try {
-      await authApi.post('/api/v1/email-verification/confirm', { email: formData.email, code: emailVerificationCode });
+      await authApi.post('/users/email-verification/confirm', { email: formData.email, verificationCode: emailVerificationCode });
       setIsEmailVerified(true);
       setVerificationError('이메일 인증이 완료되었습니다.');
     } catch (error) {

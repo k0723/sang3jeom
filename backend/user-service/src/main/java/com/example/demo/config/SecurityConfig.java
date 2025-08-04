@@ -93,6 +93,7 @@ public class SecurityConfig {
       )
       .authorizeHttpRequests(auth -> auth
         // 열어둘 경로
+        .requestMatchers("/error").permitAll()
         .requestMatchers("/admin/**").hasRole("ADMIN")
         .requestMatchers(
           "/signup",
@@ -101,7 +102,10 @@ public class SecurityConfig {
           "/logout",               // ← 여기
           "/oauth2/**",
           "/swagger-ui/**",
-          "/v3/api-docs/**"
+          "/v3/api-docs/**",
+          "/users/email-verification/**",   // ✅ 인증 제외
+          "/users/refresh",
+          "/error" 
         ).permitAll()
         .anyRequest().authenticated()
       )
