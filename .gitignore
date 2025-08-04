@@ -23,6 +23,7 @@ Thumbs.db
 # Gradle
 .gradle/
 build/
+.env
 
 # Logs
 *.log

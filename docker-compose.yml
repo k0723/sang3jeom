@@ -61,6 +61,8 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - S3_REGION=${S3_REGION}
       - BASE_URL=${BASE_URL}
+      - MAIL_USERNAME=${GMAIL_USERNAME}
+      - MAIL_PASSWORD=${GMAIL_APP_PASSWORD}
     ports:
       - "8080:8080"
     volumes:
