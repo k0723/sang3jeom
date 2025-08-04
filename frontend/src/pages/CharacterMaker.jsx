@@ -65,7 +65,7 @@ export default function CharacterMaker({ onDone }) {
         return;
       }
       
-      const res = await api.get(`/api/ai-images/user/${userId}`);
+      const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
       
       if (res.status === 200) {
         const data = res.data;
@@ -144,7 +144,7 @@ export default function CharacterMaker({ onDone }) {
     const prompt = `Draw a cute pet as a ${style} character.`;
     formData.append("prompt", prompt);
 
-    const res = await api.post("http://localhost:8000/generate-character", formData);
+    const res = await imageServiceApi.post("/generate-character", formData);
     if (res.status !== 200) throw new Error("AI 변환 실패");
     return res.data;
   }
@@ -221,7 +221,7 @@ export default function CharacterMaker({ onDone }) {
     }
     
     // result.result_url이 URL일 경우, Blob으로 변환
-    const response = await api.get(result.result_url);
+    const response = await imageServiceApi.get(result.result_url);
     const blob = await response.blob();
     const file = new File([blob], "ai_character.png", { type: blob.type });
     const formData = new FormData();

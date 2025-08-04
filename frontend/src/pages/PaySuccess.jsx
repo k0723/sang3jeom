@@ -64,7 +64,7 @@ export default function PaySuccess() {
     });
 
     if (pg_token && tid && partner_order_id && partner_user_id) {
-      api.post("/pay/approve", {
+      orderServiceApi.post("/pay/approve", {
         tid,
         partner_order_id,
         partner_user_id,

@@ -9,6 +9,8 @@ const userServiceApi = createApiInstance('http://localhost:8080');
 const communityServiceApi = createApiInstance('http://localhost:8083');
 const imageServiceApi = createApiInstance('http://localhost:8000');
 const orderServiceApi = createApiInstance('http://localhost:8082');
+const reaviewServiceApi = createApiInstance('http://localhost:8084');
+const goodsServiceApi = createApiInstance('http://localhost:8084');
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -44,7 +46,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
       const token = localStorage.getItem("accessToken");
       if (!token) return;
       
-      const response = await api.get("/users/me");
+      const response = await userServiceApi.get("/users/me");
       if (response.status === 200) {
         const userData = response.data;
         setCurrentUser(userData);
@@ -73,7 +75,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!newComment.trim()) return;
     try {
       setLoading(true);
-      await api.post(`/comments`, {
+      await reaviewServiceApi.post(`/comments`, {
         content: newComment,
         goodsPostId: Number(post.id)
       });
@@ -426,7 +428,7 @@ export default function Community() {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
-    api.get("/users/me")
+    userServiceApi.get("/users/me")
       .then(res => setUser(res.data))
       .catch(() => setUser(null));
   }, []);
@@ -447,7 +449,7 @@ export default function Community() {
 
     try {
       // AI 이미지 가져오기
-      const aiRes = await api.get(`/api/ai-images/user/${userId}`);
+      const aiRes = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
       
       if (aiRes.status === 200) {
         const aiData = aiRes.data;
@@ -455,7 +457,7 @@ export default function Community() {
       }
 
       // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
-      const goodsRes = await orderServiceApi.get(`/api/saved-goods/user/${userId}`);
+      const goodsRes = await imageServiceApi.get(`/api/saved-goods/user/${userId}`);
       
       if (goodsRes.status === 200) {
         const goodsData = goodsRes.data;
@@ -479,7 +481,7 @@ export default function Community() {
   const handleCreatePost = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await api.post('/goods-posts', {
+      await goods.post('/goods-posts', {
         content,
         visibility,
         imageUrl: image
@@ -495,13 +497,13 @@ export default function Community() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/goods-posts');
+      const response = await communityServiceApi.get('/goods-posts');
       const sortedPosts = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       // 각 게시글에 대해 좋아요 상태 체크
       const token = localStorage.getItem("accessToken");
       const postsWithLike = await Promise.all(sortedPosts.map(async (post) => {
         try {
-          const res = await api.get(`/likes/post/${post.id}/check`);
+          const res = await communityServiceApi.get(`/likes/post/${post.id}/check`);
           return { ...post, isLiked: res.data.liked };
         } catch {
           return { ...post, isLiked: false };

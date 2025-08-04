@@ -54,7 +54,7 @@ export default function CommunityPostDetail() {
       const token = localStorage.getItem("accessToken");
       if (!token) return;
       
-      const response = await api.get("/users/me");
+      const response = await userServiceApi.get("/users/me");
       if (response.status === 200) {
         const userData = response.data;
         setCurrentUser(userData);
@@ -68,14 +68,14 @@ export default function CommunityPostDetail() {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/goods-posts/${id}`);
+      const response = await communityServiceApi.get(`/goods-posts/${id}`);
       setPost(response.data);
       setLikeCount(response.data.likeCount || 0);
       
       // 좋아요 상태 체크
       try {
         const token = localStorage.getItem("accessToken");
-        const likeResponse = await api.get(`/likes/post/${id}/check`);
+        const likeResponse = await communityServiceApi.get(`/likes/post/${id}/check`);
         setIsLiked(likeResponse.data.liked);
       } catch {
         setIsLiked(false);
@@ -91,7 +91,7 @@ export default function CommunityPostDetail() {
   const fetchComments = async () => {
     try {
       setCommentLoading(true);
-      const response = await api.get(`/comments/post/${id}`);
+      const response = await communityServiceApi.get(`/comments/post/${id}`);
       setComments(response.data);
     } catch (err) {
       console.error('댓글 조회 실패:', err);
@@ -104,7 +104,7 @@ export default function CommunityPostDetail() {
   const handleLikeToggle = async () => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await api.post(`/likes/${id}`, {});
+      const response = await communityServiceApi.post(`/likes/${id}`, {});
       const { liked, likeCount: newLikeCount } = response.data;
       setIsLiked(liked);
       setLikeCount(newLikeCount);
@@ -121,7 +121,7 @@ export default function CommunityPostDetail() {
     try {
       setCommentSubmitting(true);
       const token = localStorage.getItem("accessToken");
-      await api.post(
+      await com.post(
         `/comments`,
         {
           content: newComment,
@@ -154,7 +154,7 @@ export default function CommunityPostDetail() {
     if (!editCommentValue.trim()) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.put(
+      await communityServiceApi.put(
         `/comments/${commentId}`,
         {
           content: editCommentValue
@@ -173,7 +173,7 @@ export default function CommunityPostDetail() {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.delete(`/comments/${commentId}`);
+      await communityServiceApi.delete(`/comments/${commentId}`);
       await fetchComments();
     } catch (err) {
       alert('댓글 삭제에 실패했습니다.');
@@ -196,7 +196,7 @@ export default function CommunityPostDetail() {
 
     try {
       // AI 이미지 가져오기
-      const aiRes = await api.get(`/api/ai-images/user/${userId}`);
+      const aiRes = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
       
       if (aiRes.status === 200) {
         const aiData = aiRes.data;
@@ -234,7 +234,7 @@ export default function CommunityPostDetail() {
   const handleEditSave = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await api.put(`/goods-posts/${id}`, {
+      await communityServiceApi.put(`/goods-posts/${id}`, {
         content,
         imageUrl: image,
         status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
