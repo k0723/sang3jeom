@@ -24,3 +24,33 @@ Thumbs.db
 .gradle/
 build/
 .env
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Upload directories and outputs
+uploads/
+outputs/
+temp/
+tmp/
+
+# Cache and temporary files
+*.tmp
+*.temp
+.cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup

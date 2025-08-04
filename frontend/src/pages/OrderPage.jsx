@@ -26,15 +26,28 @@ const OrderPage = () => {
     quantity
   } = location.state || {};
 
-  const totalPrice = price ? parseInt(price.toString().replace(/[^0-9]/g, "")) : 12900;
-  const unitPrice = quantity ? Math.round(totalPrice / quantity) : totalPrice;
+  // GoodsMaker에서 전달받은 데이터가 있으면 해당 데이터 사용
+  const unitPrice = productData?.price || (price ? parseInt(price.toString().replace(/[^0-9]/g, "")) : 12900);
+  const productQuantity = productData?.quantity || quantity || 1;
+  // 총 가격 = 개당 가격 × 수량
+  const totalPrice = unitPrice * productQuantity;
+  
+  console.log("OrderPage 가격 계산:", {
+    price,
+    quantity,
+    productData,
+    unitPrice,
+    productQuantity,
+    totalPrice,
+    calculatedTotal: unitPrice * productQuantity
+  });
   
   // GoodsMaker에서 전달한 product 데이터가 있으면 사용, 없으면 기본값 사용
   const product = productData ? {
     name: productData.name,
     desc: productData.desc,
     option: productData.option,
-    price: productData.price,
+    price: totalPrice, // 총 가격으로 설정 (개당 가격 × 수량)
     image: productData.image,
     quantity: productData.quantity,
     features: productData.features || []
@@ -42,7 +55,7 @@ const OrderPage = () => {
     name: label || "에이센트ASCENT",
     desc: description || "에이센트 대용량 디퓨저 500ml 실내방향제 집들이선물 그린에어리 인테리어",
     option: quantity ? ` ${quantity}개` : "수량: 1개",
-    price: totalPrice,
+    price: totalPrice, // 총 가격으로 설정
     image: img || "/assets/dog-cat.png",
     quantity: quantity || 1,
     features: features || []

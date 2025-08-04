@@ -41,9 +41,10 @@ public class KakaoPayService {
         body.put("quantity", request.getQuantity()); // Integer
         body.put("total_amount", request.getTotalAmount()); // Integer
         body.put("tax_free_amount", request.getTaxFreeAmount()); // Integer
-        body.put("approval_url", "http://localhost:5173/pay/success");
-        body.put("cancel_url", "http://localhost:8080/pay/cancel");
-        body.put("fail_url", "http://localhost:8080/pay/fail");
+        // body.put("approval_url", "http://localhost:5173/pay/success");
+        body.put("approval_url", "https://sang3jeom.com/pay/success");
+        body.put("cancel_url", "https://sang3jeom.com/pay/cancel");
+        body.put("fail_url", "https://sang3jeom.com/pay/fail");
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
