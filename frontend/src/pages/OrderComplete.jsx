@@ -36,13 +36,13 @@ export default function OrderComplete() {
     if (!token) return;
     
     // 사용자 정보 가져오기
-    api.get("/users/me")
+    userServiceApi.get("/users/me")
       .then(res => res.data)
       .then(user => {
         setUser(user);
         
         // AI 이미지 가져오기
-        return api.get(`/api/ai-images/user/${user.id}`);
+        return imageServiceApi.get(`/api/ai-images/user/${user.id}`);
       })
       .then(res => res.data)
       .then(images => {

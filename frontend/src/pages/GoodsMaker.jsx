@@ -210,7 +210,7 @@ export default function GoodsMaker() {
       console.log("AI 이미지 불러오기 시작, userId:", userId);
       
       try {
-        const res = await api.get(`/api/ai-images/user/${userId}`);
+        const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
           
         console.log("API 응답 상태:", res.status);
         
@@ -746,7 +746,7 @@ export default function GoodsMaker() {
     const goodsId = selected.key; // 실제 goodsId로 대체 필요
     const quantityValue = quantity;
     try {
-      const res = await api.post("/cart", {
+      const res = await orderServiceApi.post("/cart", {
         userId: userId,
         goodsId: 0,
         quantity: Number(quantity)

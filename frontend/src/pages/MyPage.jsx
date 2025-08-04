@@ -144,7 +144,7 @@ const MyPage = () => {
   // 주문 통계 가져오기
   const fetchOrderStats = async () => {
     try {
-      const response = await api.get('/orders/my-stats');
+      const response = await orderServiceApi.get('/orders/my-stats');
       
       console.log("주문 통계:", response.data);
       setOrderStats(response.data);
@@ -167,7 +167,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await api.get('/goods-posts/my-posts');
+      const response = await communityServiceApi.get('/goods-posts/my-posts');
       
       console.log("내가 쓴 글:", response.data);
       setMyPosts(response.data);
@@ -329,7 +329,7 @@ const MyPage = () => {
     
     try {
       console.log("굿즈 조회 API 호출 - userId:", userId);
-      const res = await api.get(`/api/user-goods?userId=${userId}`);
+      const res = await imageServiceApi.get(`/api/user-goods?userId=${userId}`);
       
       console.log("굿즈 조회 API 응답 상태:", res.status);
       
@@ -508,7 +508,7 @@ const MyPage = () => {
     try {
       // JWT 토큰 확인 - localStorage에서 가져오기
 
-      const res = await api.get('/users/me');
+      const res = await userServiceApi.get('/users/me');
       
       console.log("사용자 정보:", res.data);
       setUser(res.data);
@@ -550,7 +550,7 @@ const MyPage = () => {
       }
 
       console.log('ABOUT TO CALL API');
-      const res = await api.put('/users/me', {name, email, phone });
+      const res = await userServiceApi.put('/users/me', {name, email, phone });
       await handleUserInfo();
       alert('프로필이 성공적으로 수정되었습니다.')
     } catch (err) {
@@ -570,7 +570,7 @@ const MyPage = () => {
   const handleprofiledelete = async () => {
     try {
       console.log('ABOUT TO CALL API');
-      const res = await api.delete('/users/me')
+      const res = await userServiceApi.delete('/users/me')
       console.log('API RESPONSE', res.data);
       await logout();
       // 3) React 상태 동기화
@@ -619,7 +619,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await api.delete(`/goods-posts/${postId}`);
+      const response = await userServiceApi.delete(`/goods-posts/${postId}`);
 
       if (response.status === 200) {
         alert('글이 성공적으로 삭제되었습니다.');
@@ -881,7 +881,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await api.delete(`/api/user-goods/${goodsId}?userId=${userId}`);
+      const response = await imageServiceApi.delete(`/api/user-goods/${goodsId}?userId=${userId}`);
 
       if (response.status === 200) {
         alert('굿즈가 성공적으로 삭제되었습니다.');
@@ -918,7 +918,7 @@ const MyPage = () => {
       console.log("AI 이미지 삭제:", { imageId, userId });
 
       // 방법 1: 쿼리 파라미터로 userId 전송
-      const res = await api.delete(`/api/ai-images/${imageId}?userId=${userId}`);
+      const res = await imageServiceApi.delete(`/api/ai-images/${imageId}?userId=${userId}`);
 
       if (res.status === 200) {
         alert('AI 캐릭터가 성공적으로 삭제되었습니다.');
