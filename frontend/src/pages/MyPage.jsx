@@ -229,7 +229,7 @@ const MyPage = () => {
       if (token) {
         try {
           console.log("🔄 주문 내역 API 호출 중...");
-          const ordersResponse = await api.get('/orders/my-orders');
+          const ordersResponse = await orderServiceApi.get('/orders/my-orders');
           
           console.log("📦 주문 내역 원본 데이터:", ordersResponse.data);
           console.log("📊 주문 개수:", ordersResponse.data?.length || 0);
@@ -376,7 +376,7 @@ const MyPage = () => {
       }
 
       console.log("🔄 주문내역 API 호출 중...");
-      const response = await api.get('/orders/my-orders');
+      const response = await orderServiceApi.get('/orders/my-orders');
       
       console.log("📦 주문내역 API 응답:", response.data);
       console.log("📊 주문 개수:", response.data?.length || 0);
@@ -594,7 +594,7 @@ const MyPage = () => {
         alert("JWT 토큰이 없습니다.");
         return;
       }
-      const res = await api.put('/users/me/password', { currentPassword, newPassword });
+      const res = await userServiceApi.put('/users/me/password', { currentPassword, newPassword });
       alert('비밀번호가 성공적으로 변경되었습니다.');
       setShowPasswordForm(false);
       setCurrentPassword('');
@@ -926,7 +926,7 @@ const MyPage = () => {
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await api.delete(`/api/ai-images/${imageId}`, {
+        const res2 = await imageServiceApi.delete(`/api/ai-images/${imageId}`, {
           data: { userId }
         });
 

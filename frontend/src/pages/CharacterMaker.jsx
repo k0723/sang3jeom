@@ -1,4 +1,3 @@
-// frontend/src/pages/CharacterMaker.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -21,7 +20,9 @@ import {
 } from "lucide-react";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
+
+const imageServiceApi = createApiInstance('http://localhost:8000');
 
 
 export default function CharacterMaker({ onDone }) {
@@ -226,7 +227,7 @@ export default function CharacterMaker({ onDone }) {
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await api.post("/api/ai-images", formData, {
+    const res = await imageServiceApi.post("/api/ai-images", formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }

@@ -1,9 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import api from "../utils/axiosInstance";
+import { createApiInstance } from '../utils/axiosInstance';
 import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import PostUploadModal from "../components/PostUploadModal";
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const imageServiceApi = createApiInstance('http://localhost:8000');
+const communityServiceApi = createApiInstance('http://localhost:8083');
 
 export default function OrderComplete() {
   const navigate = useNavigate();
@@ -54,7 +58,7 @@ export default function OrderComplete() {
   const handlePost = async (post) => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await api.post(
+      const response = await communityServiceApi.post(
         "/goods-posts",
         {
           content: post.content,
