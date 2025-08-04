@@ -1,8 +1,8 @@
 
 package com.example.demo.grpc;
-
-import com.example.demo.grpc.*;
-import com.google.protobuf.Empty;
+import com.example.demo.grpc.GetUserRequest;
+import com.example.demo.grpc.UserInfoResponse;
+import com.example.demo.grpc.UserServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.springframework.stereotype.Component;
@@ -14,19 +14,17 @@ public class UserGrpcClient {
 
     public UserGrpcClient() {
         ManagedChannel channel = ManagedChannelBuilder
-                .forAddress("user-service", 9090) // 내부 DNS 혹은 localhost
+                .forAddress("localhost", 9090) // 실제 gRPC 서버 주소
                 .usePlaintext()
                 .build();
-
-        stub = UserServiceGrpc.newBlockingStub(channel);
+        this.stub = UserServiceGrpc.newBlockingStub(channel);
     }
 
-    public UserInfo getUserById(long userId) {
-        return stub.getUserById(UserIdRequest.newBuilder().setUserId(userId).build());
-    }
+    public UserInfoResponse getUserById(long userId) {
+        GetUserRequest request = GetUserRequest.newBuilder()
+                .setUserId(userId)
+                .build();
 
-    public void listUsers() {
-        UserListResponse res = stub.listUsers(Empty.newBuilder().build());
-        res.getUsersList().forEach(u -> System.out.println(u.getEmail()));
+        return stub.getUser(request);
     }
 }
