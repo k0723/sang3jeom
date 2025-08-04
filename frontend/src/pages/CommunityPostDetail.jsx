@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import Navbar from '../components/Navbar';
 import PostUploadModal from '../components/PostUploadModal';
 import { getUserIdFromToken } from '../utils/jwtUtils';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock, ArrowLeft, Edit, Trash2, CheckCircle, MoreVertical } from 'lucide-react';
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const communityServiceApi = createApiInstance('http://localhost:8083');
+const imageServiceApi = createApiInstance('http://localhost:8000');
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 function formatRelativeTime(dateString) {
   const now = new Date();
@@ -199,7 +204,7 @@ export default function CommunityPostDetail() {
       }
 
       // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
-      const goodsRes = await api.get(`/api/saved-goods/user/${userId}`);
+      const goodsRes = await orderServiceApi.get(`/api/saved-goods/user/${userId}`);
       
       if (goodsRes.status === 200) {
         const goodsData = goodsRes.data;
@@ -258,7 +263,7 @@ export default function CommunityPostDetail() {
 
     try {
       const token = localStorage.getItem("accessToken");
-      await api.delete(`/goods-posts/${id}`);
+      await communityServiceApi.delete(`/goods-posts/${id}`);
       alert('게시글이 삭제되었습니다.');
       navigate('/community');
     } catch (err) {

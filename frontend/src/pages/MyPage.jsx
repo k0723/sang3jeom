@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
 import { getUserIdFromToken } from '../utils/jwtUtils';
 import { reviewAPIService } from '../utils/reviewAPI';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import { 
   User, 
   ShoppingBag, 
@@ -22,6 +22,11 @@ import Navbar from '../components/Navbar';
 import { useNavigate, Link } from 'react-router-dom';
 import ReviewModal from '../components/ReviewModal';
 import { useAuth } from "../utils/useAuth";
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const orderServiceApi = createApiInstance('http://localhost:8082');
+const communityServiceApi = createApiInstance('http://localhost:8083');
+const imageServiceApi = createApiInstance('http://localhost:8000');
 
 const MyPage = () => {
 
@@ -224,7 +229,7 @@ const MyPage = () => {
       if (token) {
         try {
           console.log("🔄 주문 내역 API 호출 중...");
-          const ordersResponse = await api.get('/orders/my-orders');
+          const ordersResponse = await orderServiceApi.get('/orders/my-orders');
           
           console.log("📦 주문 내역 원본 데이터:", ordersResponse.data);
           console.log("📊 주문 개수:", ordersResponse.data?.length || 0);
@@ -371,7 +376,7 @@ const MyPage = () => {
       }
 
       console.log("🔄 주문내역 API 호출 중...");
-      const response = await api.get('/orders/my-orders');
+      const response = await orderServiceApi.get('/orders/my-orders');
       
       console.log("📦 주문내역 API 응답:", response.data);
       console.log("📊 주문 개수:", response.data?.length || 0);
@@ -589,7 +594,7 @@ const MyPage = () => {
         alert("JWT 토큰이 없습니다.");
         return;
       }
-      const res = await api.put('/users/me/password', { currentPassword, newPassword });
+      const res = await userServiceApi.put('/users/me/password', { currentPassword, newPassword });
       alert('비밀번호가 성공적으로 변경되었습니다.');
       setShowPasswordForm(false);
       setCurrentPassword('');
@@ -921,7 +926,7 @@ const MyPage = () => {
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await api.delete(`/api/ai-images/${imageId}`, {
+        const res2 = await imageServiceApi.delete(`/api/ai-images/${imageId}`, {
           data: { userId }
         });
 
@@ -957,7 +962,7 @@ const MyPage = () => {
           }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await api.get(`/api/ai-images/user/${userId}`);
+          const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
           
           if (res.status === 200) {
             const data = res.data;

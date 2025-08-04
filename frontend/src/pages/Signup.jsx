@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import { createApiInstance } from '../utils/axiosInstance';
+
+const authApi = createApiInstance('http://localhost:8080');
 import { 
   Mail, 
   Lock, 
@@ -31,6 +33,10 @@ const Signup = () => {
     privacy: false,
     marketing: false
   });
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [isVerificationCodeSent, setIsVerificationCodeSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
 
   //유효성 검사 로직 
   // 이메일 유효성 검사
@@ -61,10 +67,34 @@ const isValidName = (name) => name.trim().length >= 2;
     }));
   };
 
+  const handleSendVerificationCode = async () => {
+    if (!isValidEmail(formData.email)) {
+      setVerificationError('올바른 이메일 주소를 입력해주세요.');
+      return;
+    }
+    try {
+      await authApi.post('/users/email-verification/send', { email: formData.email });
+      setIsVerificationCodeSent(true);
+      setVerificationError('인증 코드가 발송되었습니다. 이메일을 확인해주세요.');
+    } catch (error) {
+      setVerificationError('인증 코드 발송에 실패했습니다.');
+    }
+  };
+
+  const handleConfirmVerificationCode = async () => {
+    try {
+      await authApi.post('/users/email-verification/confirm', { email: formData.email, verificationCode: emailVerificationCode });
+      setIsEmailVerified(true);
+      setVerificationError('이메일 인증이 완료되었습니다.');
+    } catch (error) {
+      setVerificationError('인증 코드가 올바르지 않습니다.');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid()) {
-    setError("입력값을 다시 확인해주세요.");
+    if (!isFormValid() || !isEmailVerified) {
+    setError("입력값을 다시 확인해주세요. 이메일 인증이 필요합니다.");
     return;
     }
     setIsLoading(true);
@@ -72,8 +102,8 @@ const isValidName = (name) => name.trim().length >= 2;
     // TODO: 실제 회원가입 로직 구현
     try {
     // 1) POST 요청: /signup (회원가입)
-    const response = await axios.post(
-      'http://localhost:8080/signup',      // 백엔드 URL을 실제 주소로 바꿔주세요
+    const response = await authApi.post(
+      '/signup',      // 백엔드 URL을 실제 주소로 바꿔주세요
       {
         username:            formData.name,
         email:           formData.email,
@@ -112,7 +142,8 @@ const isValidName = (name) => name.trim().length >= 2;
       formData.password === formData.confirmPassword &&
       isValidPhone(formData.phone) &&
       agreements.terms &&
-      agreements.privacy
+      agreements.privacy &&
+      isEmailVerified
     );
   };
 
@@ -191,10 +222,56 @@ const isValidName = (name) => name.trim().length >= 2;
                     onChange={handleInputChange}
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="your@email.com"
+                    disabled={isVerificationCodeSent || isEmailVerified} // 인증 코드 발송 후 비활성화
                   />
+                  {!isEmailVerified && ( // 인증 완료 전까지 버튼 표시
+                    <button
+                      type="button"
+                      onClick={handleSendVerificationCode}
+                      disabled={!isValidEmail(formData.email) || isVerificationCodeSent}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {isVerificationCodeSent ? '재전송' : '인증 코드 받기'}
+                    </button>
+                  )}
                 </div>
                 {formData.email && !isValidEmail(formData.email) && (
                   <p className="mt-1 text-xs text-red-500">올바른 이메일 주소를 입력하세요.</p>
+                )}
+                {isVerificationCodeSent && !isEmailVerified && (
+                  <div className="mt-4">
+                    <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-2">
+                      인증 코드
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="verificationCode"
+                        name="verificationCode"
+                        type="text"
+                        required
+                        value={emailVerificationCode}
+                        onChange={(e) => setEmailVerificationCode(e.target.value)}
+                        className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="인증 코드 입력"
+                        disabled={isEmailVerified}
+                      />
+                      {!isEmailVerified && (
+                        <button
+                          type="button"
+                          onClick={handleConfirmVerificationCode}
+                          disabled={!emailVerificationCode.trim()}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                          확인
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {verificationError && (
+                  <p className={`mt-1 text-xs ${isEmailVerified ? 'text-green-500' : 'text-red-500'}`}>
+                    {verificationError}
+                  </p>
                 )}
               </div>
 

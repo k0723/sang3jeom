@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import ReviewForm from '../components/ReviewForm.jsx';
 import ReviewSection from '../components/ReviewSection';
 import { getUserIdFromToken } from '../utils/jwtUtils';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import { 
   ShoppingCart, 
   Download, 
@@ -26,6 +26,9 @@ import mugCupImg from '../assets/mug_cup.jpg';
 import tShirtImg from '../assets/t_shirts.png';
 import echoBagImg from '../assets/echo_bag.png';
 import caseImg from '../assets/case.png';
+
+const imageServiceApi = createApiInstance('http://localhost:8000');
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 const goodsList = [
   { 
@@ -794,7 +797,7 @@ export default function GoodsMaker() {
       formData.append('file', file);
 
       try {
-        const res = await api.post('/api/user-goods', formData, {
+        const res = await orderServiceApi.post('/api/user-goods', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

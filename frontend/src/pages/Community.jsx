@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
 import PostUploadModal from '../components/PostUploadModal';
 import { getUserIdFromToken } from '../utils/jwtUtils';
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const communityServiceApi = createApiInstance('http://localhost:8083');
+const imageServiceApi = createApiInstance('http://localhost:8000');
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -53,7 +58,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
   const fetchComments = async () => {
     try {
       setCommentLoading(true);
-      const response = await api.get(`/comments/post/${post.id}`);
+      const response = await communityServiceApi.get(`/comments/post/${post.id}`);
       setComments(response.data);
     } catch (err) {
       console.error('댓글 조회 실패:', err);
@@ -87,7 +92,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.delete(`/comments/${commentId}`);
+      await communityServiceApi.delete(`/comments/${commentId}`);
       await fetchComments();
       if (onCommentAdded) onCommentAdded();
     } catch (err) {
@@ -110,7 +115,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!editCommentValue.trim()) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.put(`/comments/${commentId}`, {
+      await communityServiceApi.put(`/comments/${commentId}`, {
         content: editCommentValue
       });
       setEditCommentId(null);
@@ -298,7 +303,7 @@ function CommunityPost({ post, isLiked, likeLoading, onEdit, onDelete, onShare, 
     ));
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await api.post(`/likes/${postId}`, {});
+      const response = await communityServiceApi.post(`/likes/${postId}`, {});
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -450,7 +455,7 @@ export default function Community() {
       }
 
       // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
-      const goodsRes = await api.get(`/api/saved-goods/user/${userId}`);
+      const goodsRes = await orderServiceApi.get(`/api/saved-goods/user/${userId}`);
       
       if (goodsRes.status === 200) {
         const goodsData = goodsRes.data;
@@ -542,7 +547,7 @@ export default function Community() {
     ));
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await api.post(`/likes/${postId}`, {});
+      const response = await communityServiceApi.post(`/likes/${postId}`, {});
       const { liked, likeCount: newLikeCount } = response.data;
       setPosts(prevPosts => prevPosts.map(post =>
         post.id === postId
@@ -572,7 +577,7 @@ export default function Community() {
   const handleEditPost = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await api.put(`/goods-posts/${editTargetPost.id}`, {
+      await communityServiceApi.put(`/goods-posts/${editTargetPost.id}`, {
         content,
         imageUrl: image,
         status: visibility === '나만 보기' ? 'PRIVATE' : 'ALL'
@@ -591,7 +596,7 @@ export default function Community() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.delete(`/goods-posts/${post.id}`);
+      await communityServiceApi.delete(`/goods-posts/${post.id}`);
       alert('삭제되었습니다.');
       fetchPosts();
     } catch (err) {

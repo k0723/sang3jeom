@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Cookies from 'js-cookie';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
+
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 export default function PaySuccess() {
   const location = useLocation();
@@ -70,7 +72,7 @@ export default function PaySuccess() {
       })
         .then(data => {
           const token = localStorage.getItem("accessToken");
-          api.post("/orders/direct", {
+          orderServiceApi.post("/orders/direct", {
             goodsId: finalGoodsId,
             goodsName: finalGoodsName,
             quantity: quantityValue,

@@ -4,7 +4,10 @@ import Navbar from "../components/Navbar";
 import { ArrowLeft } from "lucide-react";
 import Modal from "../components/Modal";
 import { getUserIdFromToken } from '../utils/jwtUtils';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 const OrderPage = () => {
   const location = useLocation();
@@ -265,7 +268,7 @@ const OrderPage = () => {
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
-    api.get("/users/me")
+    userServiceApi.get("/users/me")
       .then(res => {
         console.log("[OrderPage] /me API status:", res.status);
         return res.data;
