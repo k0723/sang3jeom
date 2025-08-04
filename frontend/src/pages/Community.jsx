@@ -75,7 +75,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!newComment.trim()) return;
     try {
       setLoading(true);
-      await reaviewServiceApi.post(`/comments`, {
+      await communityServiceApi.post(`/comments`, {
         content: newComment,
         goodsPostId: Number(post.id)
       });
@@ -481,7 +481,7 @@ export default function Community() {
   const handleCreatePost = async ({ content, visibility, image }) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await goods.post('/goods-posts', {
+      await communityServiceApi.post('/goods-posts', {
         content,
         visibility,
         imageUrl: image
