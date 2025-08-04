@@ -121,7 +121,7 @@ export default function CommunityPostDetail() {
     try {
       setCommentSubmitting(true);
       const token = localStorage.getItem("accessToken");
-      await com.post(
+      await communityServiceApi.post(
         `/comments`,
         {
           content: newComment,
@@ -204,7 +204,7 @@ export default function CommunityPostDetail() {
       }
 
       // 저장된 굿즈 이미지 가져오기 (최근 것 하나)
-      const goodsRes = await orderServiceApi.get(`/api/saved-goods/user/${userId}`);
+      const goodsRes = await imageServiceApi.get(`/api/saved-goods/user/${userId}`);
       
       if (goodsRes.status === 200) {
         const goodsData = goodsRes.data;

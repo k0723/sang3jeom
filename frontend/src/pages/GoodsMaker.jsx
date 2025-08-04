@@ -746,7 +746,7 @@ export default function GoodsMaker() {
     const goodsId = selected.key; // 실제 goodsId로 대체 필요
     const quantityValue = quantity;
     try {
-      const res = await orderServiceApi.post("/cart", {
+      const res = await imageServiceApi.post("/cart", {
         userId: userId,
         goodsId: 0,
         quantity: Number(quantity)
@@ -797,7 +797,7 @@ export default function GoodsMaker() {
       formData.append('file', file);
 
       try {
-        const res = await orderServiceApi.post('/api/user-goods', formData, {
+        const res = await imageServiceApi.post('/api/user-goods', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
