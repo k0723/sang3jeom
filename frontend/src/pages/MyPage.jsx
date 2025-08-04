@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLogout } from '../utils/useLogout';
 import { getUserIdFromToken } from '../utils/jwtUtils';
 import { reviewAPIService } from '../utils/reviewAPI';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import { 
   User, 
   ShoppingBag, 
@@ -22,6 +22,11 @@ import Navbar from '../components/Navbar';
 import { useNavigate, Link } from 'react-router-dom';
 import ReviewModal from '../components/ReviewModal';
 import { useAuth } from "../utils/useAuth";
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const orderServiceApi = createApiInstance('http://localhost:8082');
+const communityServiceApi = createApiInstance('http://localhost:8083');
+const imageServiceApi = createApiInstance('http://localhost:8000');
 
 const MyPage = () => {
 
@@ -957,7 +962,7 @@ const MyPage = () => {
           }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await api.get(`/api/ai-images/user/${userId}`);
+          const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
           
           if (res.status === 200) {
             const data = res.data;

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import api from '../utils/axiosInstance';
+import { createApiInstance } from '../utils/axiosInstance';
 import Navbar from '../components/Navbar';
 import { MoreHorizontal, Heart, MessageCircle, Share2, Bookmark, X, Send, Lock } from 'lucide-react';
 import PostUploadModal from '../components/PostUploadModal';
 import { getUserIdFromToken } from '../utils/jwtUtils';
+
+const userServiceApi = createApiInstance('http://localhost:8080');
+const communityServiceApi = createApiInstance('http://localhost:8083');
+const imageServiceApi = createApiInstance('http://localhost:8000');
+const orderServiceApi = createApiInstance('http://localhost:8082');
 
 // 게시글 상세+댓글 모달
 function formatRelativeTime(dateString) {
@@ -110,7 +115,7 @@ function CommunityPostDetailModal({ post, isOpen, onClose, onCommentAdded, onEdi
     if (!editCommentValue.trim()) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.put(`/comments/${commentId}`, {
+      await communityServiceApi.put(`/comments/${commentId}`, {
         content: editCommentValue
       });
       setEditCommentId(null);
@@ -591,7 +596,7 @@ export default function Community() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
       const token = localStorage.getItem("accessToken");
-      await api.delete(`/goods-posts/${post.id}`);
+      await communityServiceApi.delete(`/goods-posts/${post.id}`);
       alert('삭제되었습니다.');
       fetchPosts();
     } catch (err) {

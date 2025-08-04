@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import { createApiInstance } from '../utils/axiosInstance';
 import { 
   Mail, 
   Lock, 
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { useAuth } from "../utils/useAuth";
+
+const authApi = createApiInstance('http://localhost:8080');
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -29,7 +31,7 @@ const Login = () => {
     
     // TODO: 실제 로그인 로직 구현
     try {
-      const res = await axios.post('http://localhost:8080/login', 
+            const res = await authApi.post('/login', 
         {email,
         password},
          { withCredentials: true } 

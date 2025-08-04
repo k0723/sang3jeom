@@ -1,15 +1,17 @@
 // src/hooks/useLogout.js
 import { useNavigate } from 'react-router-dom';
 import { useCallback } from 'react';
-import axios from 'axios';
+import { createApiInstance } from './axiosInstance';
+
+const authApi = createApiInstance('http://localhost:8080');
 
 export function useLogout(setIsLoggedIn) {
   const navigate = useNavigate();
 
   return useCallback(async () => {
     console.log('🔒 start logout api');
-        await axios.post('http://localhost:8080/logout',{}, { withCredentials: true });
-        console.log('✅ logout API success');
+    await authApi.post('/logout', {});
+    console.log('✅ logout API success');
     localStorage.clear();
     sessionStorage.clear();
     setIsLoggedIn(false);

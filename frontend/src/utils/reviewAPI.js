@@ -1,104 +1,13 @@
-import axios from 'axios';
+import { createApiInstance } from './axiosInstance';
 
-const REVIEW_SERVICE_URL = 'http://localhost:8084/api/reviews'; // 직접 백엔드 URL 사용
+const REVIEW_SERVICE_URL = 'http://localhost:8084/api/reviews';
+const IMAGE_SERVICE_URL = 'http://localhost:8000'; // Image service URL
 
-// 기본 axios 인스턴스 생성
-const reviewAPI = axios.create({
-  baseURL: REVIEW_SERVICE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// reviewAPI 인스턴스 생성
+const reviewAPI = createApiInstance(REVIEW_SERVICE_URL);
 
-// 이미지 관련 axios 인스턴스 생성
-const imageAPI = axios.create({
-  baseURL: '', // 프록시를 통해 접근
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// 요청 인터셉터 - JWT 토큰 자동 추가 (reviewAPI)
-reviewAPI.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    
-    // 전체 리뷰 조회는 토큰 없이도 가능
-    const isPublicEndpoint = 
-      config.method === 'get' && 
-      (config.url === '' || config.url.startsWith('?'));
-    
-    if (token && !isPublicEndpoint) {
-      config.headers.Authorization = `Bearer ${token}`;
-      // Review 서비스는 X-User-ID 헤더를 기대하므로 임시로 토큰에서 추출
-      // 실제로는 API Gateway에서 처리해야 함
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        config.headers['X-User-ID'] = payload.userId || payload.sub;
-      } catch (error) {
-        console.warn('JWT 파싱 실패:', error);
-      }
-    }
-    
-    console.log('리뷰 API 요청:', {
-      method: config.method,
-      url: config.url,
-      hasToken: !!token,
-      isPublic: isPublicEndpoint,
-      headers: config.headers
-    });
-    
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// 요청 인터셉터 - JWT 토큰 자동 추가 (imageAPI)
-imageAPI.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        config.headers['X-User-ID'] = payload.userId || payload.sub;
-      } catch (error) {
-        console.warn('JWT 파싱 실패:', error);
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// 응답 인터셉터 - 에러 처리 (reviewAPI)
-reviewAPI.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // 토큰 만료 시 로그인 페이지로 리다이렉트
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// 응답 인터셉터 - 에러 처리 (imageAPI)
-imageAPI.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
+// imageAPI 인스턴스 생성
+const imageAPI = createApiInstance(IMAGE_SERVICE_URL);
 
 export const reviewAPIService = {
   // 리뷰 목록 조회 (페이징)

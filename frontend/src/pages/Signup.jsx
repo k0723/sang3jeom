@@ -72,8 +72,8 @@ const isValidName = (name) => name.trim().length >= 2;
     // TODO: 실제 회원가입 로직 구현
     try {
     // 1) POST 요청: /signup (회원가입)
-    const response = await axios.post(
-      'http://localhost:8080/signup',      // 백엔드 URL을 실제 주소로 바꿔주세요
+    const response = await authApi.post(
+      '/signup',      // 백엔드 URL을 실제 주소로 바꿔주세요
       {
         username:            formData.name,
         email:           formData.email,
