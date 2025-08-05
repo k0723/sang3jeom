@@ -42,7 +42,7 @@ elif [ "$SERVICE_NAME" = "image-service" ]; then
     
     # Python 애플리케이션 실행
     cd /app
-    exec python main.py
+    exec uvicorn main:app --host 0.0.0.0 --port $SERVICE_PORT
     
 else
     echo "❌ Unknown service type: $SERVICE_NAME"
