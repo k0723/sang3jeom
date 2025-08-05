@@ -20,11 +20,6 @@ import {
 } from "lucide-react";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import { createApiInstance } from '../utils/axiosInstance';
-
-const imageServiceApi = createApiInstance('http://localhost:8000');
-const userServiceApi = createApiInstance('http://localhost:8080');
-
 
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
@@ -66,9 +61,13 @@ export default function CharacterMaker({ onDone }) {
         return;
       }
       
-      const res = await userServiceApi.get(`/api/ai-images/user/${userId}`);
-      
-      if (res.status === 200) {
+  const res = await fetch(`http://localhost:8080/api/ai-images/user/${userId}`, {
+        headers: { 
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+    if (res.status === 200) {
         const data = res.data;
         setAiImageCount(data.length);
         console.log("현재 AI 이미지 개수:", data.length);
@@ -145,58 +144,61 @@ export default function CharacterMaker({ onDone }) {
     const prompt = `Draw a cute pet as a ${style} character.`;
     formData.append("prompt", prompt);
 
-    const res = await imageServiceApi.post("/generate-character", formData);
-    if (res.status !== 200) throw new Error("AI 변환 실패");
-    return res.data;
+    const res = await fetch("http://localhost:8000/generate-character", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("AI 변환 실패");
+    return await res.json();
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // AI 이미지 개수 제한 확인
-    if (aiImageCount >= 3) {
-      alert('AI 캐릭터는 최대 3개까지만 생성할 수 있습니다.\n더 만들고 싶으시면 마이페이지에서 기존 이미지를 삭제해주세요.');
-      return;
-    }
-    
-    if (!image) {
-      setError("이미지를 선택해주세요.");
-      return;
-    }
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      
+      // AI 이미지 개수 제한 확인
+      if (aiImageCount >= 3) {
+        alert('AI 캐릭터는 최대 3개까지만 생성할 수 있습니다.\n더 만들고 싶으시면 마이페이지에서 기존 이미지를 삭제해주세요.');
+        return;
+      }
+      
+      if (!image) {
+        setError("이미지를 선택해주세요.");
+        return;
+      }
 
-    setLoading(true);
-    setResult(null);
-    setError("");
-    try {
-      const data = await generateCharacter({
-        imageFile: image,
-        style,
-      });
-      setResult(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      setResult(null);
+      setError("");
+      try {
+        const data = await generateCharacter({
+          imageFile: image,
+          style,
+        });
+        setResult(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleDownload = () => {
-    if (result && result.result_url) {
-      const link = document.createElement("a");
-      link.href = result.result_url;
-      link.download = "ai_character.jpg";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+    const handleDownload = () => {
+      if (result && result.result_url) {
+        const link = document.createElement("a");
+        link.href = result.result_url;
+        link.download = "ai_character.jpg";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    };
 
-  const handleSaveImage = async () => {
-    // JWT 토큰에서 userId 추출
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      alert("로그인이 필요합니다.");
-      return;
+    const handleSaveImage = async () => {
+      // JWT 토큰에서 userId 추출
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("로그인이 필요합니다.");
+        return;
     }
     
     // JWT 토큰에서 userId 추출
@@ -222,23 +224,25 @@ export default function CharacterMaker({ onDone }) {
     }
     
     // result.result_url이 URL일 경우, Blob으로 변환
-    const response = await imageServiceApi.get(result.result_url);
+    const response = await fetch(result.result_url);
     const blob = await response.blob();
     const file = new File([blob], "ai_character.png", { type: blob.type });
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await userServiceApi.post("/api/ai-images", formData, {
+    const res = await fetch("http://localhost:8080/api/ai-images", {
+      method: "POST",
       headers: {
-        "Content-Type": "multipart/form-data"
-      }
-    });
-    if (res.status === 200) {
+        "Authorization": `Bearer ${accessToken}`
+      },
+        body: formData
+      });
+     if (res.ok) {
       alert("이미지 저장 성공!");
       // AI 이미지 개수 증가
       setAiImageCount(prev => prev + 1);
     } else {
-      const err = res.data;
+      const err = await res.json();
       alert(err.message || "저장 실패");
     }
   };

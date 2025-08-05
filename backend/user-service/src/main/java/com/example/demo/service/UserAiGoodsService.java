@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.io.IOException;
+import java.io.InputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -25,21 +26,19 @@ public class UserAiGoodsService {
     @Transactional
     public UserAiGoodsEntity saveAiGoods(Long userId, String goodsType, MultipartFile file) throws IOException {
         System.out.println("UserAiGoodsService.saveAiGoods 호출 - userId: " + userId + ", goodsType: " + goodsType);
-        
+
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다."));
-        
         System.out.println("유저 찾기 완료: " + user.getName());
-        
-        // S3에 굿즈 업로드
         String imageUrl = s3Service.uploadGoodsFile(file, userId, goodsType);
         System.out.println("S3 업로드 완료: " + imageUrl);
-        
-        UserAiGoodsEntity entity = UserAiGoodsEntity.builder()
+        // 1. URL에서 이미지 다운로드
+         UserAiGoodsEntity entity = UserAiGoodsEntity.builder()
                 .user(user)
-                .goodsType(goodsType)
-                .imageUrl(imageUrl)
-                .build();
+                        .goodsType(goodsType)
+                        .imageUrl(imageUrl)
+                        .build();
         
         UserAiGoodsEntity savedEntity = aiGoodsRepository.save(entity);
         System.out.println("데이터베이스 저장 완료 - id: " + savedEntity.getId());

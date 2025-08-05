@@ -166,8 +166,8 @@ services:
     restart: unless-stopped
   image-service:
     build:
-      context: ./backend/image-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/image-service/Dockerfile
       platforms: [ "linux/amd64", "linux/arm64" ]
     container_name: sang3jeom-image-service
     platform: linux/amd64
@@ -186,8 +186,8 @@ services:
     volumes:
       - image_uploads:/app/uploads
       - image_outputs:/app/outputs
-      - ./scripts:/scripts:ro
-    command: ["sh", "/scripts/docker-start.sh", "image-service", "8000"]
+      - ./scripts:/scripts:rw
+    command: ["sh", "-c", "dos2unix /scripts/*.sh && sh /scripts/docker-start.sh image-service 8000"]
     networks:
       - sang3jeom-network
     restart: unless-stopped
