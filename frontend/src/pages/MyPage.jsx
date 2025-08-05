@@ -329,7 +329,7 @@ const MyPage = () => {
     
     try {
       console.log("굿즈 조회 API 호출 - userId:", userId);
-      const res = await imageServiceApi.get(`/api/user-goods?userId=${userId}`);
+      const res = await userServiceApi.get(`/api/user-goods?userId=${userId}`);
       
       console.log("굿즈 조회 API 응답 상태:", res.status);
       
@@ -881,7 +881,7 @@ const MyPage = () => {
         return;
       }
 
-      const response = await imageServiceApi.delete(`/api/user-goods/${goodsId}?userId=${userId}`);
+      const response = await userServiceApi.delete(`/api/user-goods/${goodsId}?userId=${userId}`);
 
       if (response.status === 200) {
         alert('굿즈가 성공적으로 삭제되었습니다.');
@@ -918,7 +918,7 @@ const MyPage = () => {
       console.log("AI 이미지 삭제:", { imageId, userId });
 
       // 방법 1: 쿼리 파라미터로 userId 전송
-      const res = await imageServiceApi.delete(`/api/ai-images/${imageId}?userId=${userId}`);
+      const res = await userServiceApi.delete(`/api/ai-images/${imageId}?userId=${userId}`);
 
       if (res.status === 200) {
         alert('AI 캐릭터가 성공적으로 삭제되었습니다.');
@@ -926,7 +926,7 @@ const MyPage = () => {
         setAiImages(prevImages => prevImages.filter(img => img.id !== imageId));
       } else {
         // 방법 2: 요청 본문에 userId 포함하여 재시도
-        const res2 = await imageServiceApi.delete(`/api/ai-images/${imageId}`, {
+        const res2 = await userServiceApi.delete(`/api/ai-images/${imageId}`, {
           data: { userId }
         });
 
@@ -962,7 +962,7 @@ const MyPage = () => {
           }
           console.log("AI 이미지 불러오기:", userId);
           
-          const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
+          const res = await userServiceApi.get(`/api/ai-images/user/${userId}`);
           
           if (res.status === 200) {
             const data = res.data;

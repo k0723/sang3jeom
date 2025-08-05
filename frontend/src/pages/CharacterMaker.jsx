@@ -23,8 +23,7 @@ import 'aos/dist/aos.css';
 import { createApiInstance } from '../utils/axiosInstance';
 
 const imageServiceApi = createApiInstance('http://localhost:8000');
-const userServiceApi = createApiInstance('http://localhost:8080')
-
+const userServiceApi = createApiInstance('http://localhost:8080');
 
 export default function CharacterMaker({ onDone }) {
   const [image, setImage] = useState(null);
