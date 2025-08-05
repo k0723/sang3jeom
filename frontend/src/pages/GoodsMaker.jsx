@@ -27,6 +27,7 @@ import tShirtImg from '../assets/t_shirts.png';
 import echoBagImg from '../assets/echo_bag.png';
 import caseImg from '../assets/case.png';
 
+const userServiceApi = createApiInstance('http://localhost:8080');
 const imageServiceApi = createApiInstance('http://localhost:8000');
 const orderServiceApi = createApiInstance('http://localhost:8082');
 
