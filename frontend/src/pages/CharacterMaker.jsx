@@ -230,7 +230,8 @@ export default function CharacterMaker({ onDone }) {
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await api.post("/api/ai-images", formData, {
+    const res = await fetch("http://localhost:8080/api/ai-images", {
+      method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`
       },
