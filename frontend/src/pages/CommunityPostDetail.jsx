@@ -196,7 +196,7 @@ export default function CommunityPostDetail() {
 
     try {
       // AI 이미지 가져오기
-      const aiRes = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
+      const aiRes = await userServiceApi.get(`/api/ai-images/user/${userId}`);
       
       if (aiRes.status === 200) {
         const aiData = aiRes.data;

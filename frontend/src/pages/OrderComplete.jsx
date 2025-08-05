@@ -42,7 +42,7 @@ export default function OrderComplete() {
         setUser(user);
         
         // AI 이미지 가져오기
-        return imageServiceApi.get(`/api/ai-images/user/${user.id}`);
+        return userServiceApi.get(`/api/ai-images/user/${user.id}`);
       })
       .then(res => res.data)
       .then(images => {

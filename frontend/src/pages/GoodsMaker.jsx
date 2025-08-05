@@ -210,7 +210,7 @@ export default function GoodsMaker() {
       console.log("AI 이미지 불러오기 시작, userId:", userId);
       
       try {
-        const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
+        const res = await userServiceApi.get(`/api/ai-images/user/${userId}`);
           
         console.log("API 응답 상태:", res.status);
         
