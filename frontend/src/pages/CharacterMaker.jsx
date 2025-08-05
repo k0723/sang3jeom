@@ -228,7 +228,7 @@ export default function CharacterMaker({ onDone }) {
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await imageServiceApi.post("/api/ai-images", formData, {
+    const res = await userServiceApi.post("/api/ai-images", formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }
