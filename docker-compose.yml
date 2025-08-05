@@ -142,6 +142,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
       - USER_SERVICE_URL=http://user-service:8080
+
       - SERVICE_URLS_USER_SERVICE=http://user-service:8080
       - SERVICE_URLS_ORDER_SERVICE=http://order-service:8082
       - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
@@ -149,6 +150,7 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - S3_REGION=${S3_REGION}
       - AWS_REGION=${S3_REGION}
+
     ports:
       - "8084:8084"
     volumes:
