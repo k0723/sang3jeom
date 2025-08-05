@@ -2,6 +2,7 @@ package com.example.review.controller;
 
 import com.example.review.dto.*;
 import com.example.review.service.ReviewService;
+import com.example.review.client.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final UserServiceClient userServiceClient;
 
     /**
      * 리뷰 생성
@@ -36,8 +38,14 @@ public class ReviewController {
      */
     @PostMapping
     public ResponseEntity<Void> createReview(
-            @RequestHeader("X-User-ID") Long userId,
+            @RequestHeader("Authorization") String token,
             @RequestBody ReviewRequestDTO requestDTO) {
+        log.info("📝 [POST] 리뷰 생성 요청 | orderId: {} | rating: {}⭐", 
+                requestDTO.getOrderId(), requestDTO.getRating());
+        
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
+        
         log.info("📝 [POST] 리뷰 생성 요청 | userId: {} | orderId: {} | rating: {}⭐", 
                 userId, requestDTO.getOrderId(), requestDTO.getRating());
         
@@ -76,9 +84,15 @@ public class ReviewController {
      */
     @PutMapping("/{reviewId}")
     public ResponseEntity<Void> updateReview(
-            @RequestHeader("X-User-ID") Long userId,
+            @RequestHeader("Authorization") String token,
             @PathVariable Long reviewId,
             @RequestBody ReviewRequestDTO requestDTO) {
+        log.info("🔄 [PUT] 리뷰 수정 요청 | reviewId: {} | newRating: {}⭐", 
+                reviewId, requestDTO.getRating());
+        
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
+        
         log.info("🔄 [PUT] 리뷰 수정 요청 | reviewId: {} | userId: {} | newRating: {}⭐", 
                 reviewId, userId, requestDTO.getRating());
         
@@ -96,8 +110,10 @@ public class ReviewController {
      */
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<Void> deleteReview(
-            @RequestHeader("X-User-ID") Long userId,
+            @RequestHeader("Authorization") String token,
             @PathVariable Long reviewId) {
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
         log.info("🗑️ [DELETE] 리뷰 삭제 요청 | reviewId: {} | userId: {}", reviewId, userId);
         
         reviewService.deleteReview(userId, reviewId);
@@ -140,8 +156,10 @@ public class ReviewController {
      */
     @PostMapping("/orders/batch")
     public ResponseEntity<Map<Long, ReviewSummaryDTO>> getReviewsByOrderIds(
-            @RequestHeader("X-User-ID") Long userId,
+            @RequestHeader("Authorization") String token,
             @RequestBody BatchReviewRequestDTO request) {
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
         log.info("🔍 [POST] Batch 리뷰 조회 | userId: {} | orderIds: {}", 
                 userId, request.getOrderIds().size());
         
@@ -158,7 +176,9 @@ public class ReviewController {
      */
     @GetMapping("/my-reviews")
     public ResponseEntity<List<ReviewResponseDTO>> getMyReviews(
-            @RequestHeader("X-User-ID") Long userId) {
+            @RequestHeader("Authorization") String token) {
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
         log.info("📋 [GET] 내 리뷰 목록 조회 | userId: {}", userId);
         
         List<ReviewResponseDTO> reviews = reviewService.getMyReviews(userId);
@@ -173,7 +193,9 @@ public class ReviewController {
      */
     @GetMapping("/my-reviews-with-order-info")
     public ResponseEntity<List<ReviewWithOrderInfoDTO>> getMyReviewsWithOrderInfo(
-            @RequestHeader("X-User-ID") Long userId) {
+            @RequestHeader("Authorization") String token) {
+        var userInfo = userServiceClient.getUserInfo(token);
+        Long userId = userInfo.getId();
         log.info("📋 [GET] 주문 정보 포함 내 리뷰 목록 조회 | userId: {}", userId);
         
         List<ReviewWithOrderInfoDTO> reviews = reviewService.getMyReviewsWithOrderInfo(userId);

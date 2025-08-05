@@ -4,6 +4,7 @@ import com.example.review.dto.client.UserInfoDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 // User Service 직접 호출 (8080 포트)
 @FeignClient(
@@ -21,4 +22,12 @@ public interface UserServiceClient {
      */
     @GetMapping("/users/{id}")
     UserInfoDTO getUserById(@PathVariable("id") Long userId);
+
+    /**
+     * 토큰으로 사용자 정보 조회
+     * @param token Authorization 헤더의 토큰
+     * @return 사용자 정보 DTO
+     */
+    @GetMapping("/users/me")
+    UserInfoDTO getUserInfo(@RequestHeader("Authorization") String token);
 }

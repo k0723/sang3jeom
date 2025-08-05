@@ -60,6 +60,7 @@ services:
       - AWS_SECRET_KEY=${AWS_SECRET_KEY}
       - S3_BUCKET=${S3_BUCKET}
       - S3_REGION=${S3_REGION}
+      - AWS_REGION=${S3_REGION}
       - BASE_URL=${BASE_URL}
       - MAIL_USERNAME=${GMAIL_USERNAME}
       - MAIL_PASSWORD=${GMAIL_APP_PASSWORD}
@@ -147,6 +148,7 @@ services:
       - AWS_SECRET_KEY=${AWS_SECRET_KEY}
       - S3_BUCKET=${S3_BUCKET}
       - S3_REGION=${S3_REGION}
+      - AWS_REGION=${S3_REGION}
     ports:
       - "8084:8084"
     volumes:
@@ -173,10 +175,10 @@ services:
       - UPLOAD_DIR=/app/uploads
       - OUTPUT_DIR=/app/outputs
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
-      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-      - S3_BUCKET=${S3_BUCKET}
-      - S3_REGION=${S3_REGION}
+      - AWS_CREDENTIALS_ACCESS-KEY=${AWS_ACCESS_KEY}
+      - AWS_CREDENTIALS_SECRET-KEY=${AWS_SECRET_KEY}
+      - AWS_S3_BUCKET=${S3_BUCKET}
+      - AWS_REGION=${S3_REGION}
     ports:
       - "8000:8000"
     volumes:
