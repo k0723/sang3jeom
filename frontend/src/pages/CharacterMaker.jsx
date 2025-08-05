@@ -23,6 +23,7 @@ import 'aos/dist/aos.css';
 import { createApiInstance } from '../utils/axiosInstance';
 
 const imageServiceApi = createApiInstance('http://localhost:8000');
+const userServiceApi = createApiInstance('http://localhost:8080')
 
 
 export default function CharacterMaker({ onDone }) {
@@ -65,7 +66,7 @@ export default function CharacterMaker({ onDone }) {
         return;
       }
       
-      const res = await imageServiceApi.get(`/api/ai-images/user/${userId}`);
+      const res = await userServiceApi.get(`/api/ai-images/user/${userId}`);
       
       if (res.status === 200) {
         const data = res.data;
@@ -221,13 +222,13 @@ export default function CharacterMaker({ onDone }) {
     }
     
     // result.result_url이 URL일 경우, Blob으로 변환
-    const response = await imageServiceApi.get(result.result_url);
+    const response = await userServiceApi.get(result.result_url);
     const blob = await response.blob();
     const file = new File([blob], "ai_character.png", { type: blob.type });
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("file", file);
-    const res = await imageServiceApi.post("/api/ai-images", formData, {
+    const res = await userServiceApi.post("/api/ai-images", formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }
