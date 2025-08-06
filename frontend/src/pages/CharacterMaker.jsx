@@ -224,26 +224,59 @@ export default function CharacterMaker({ onDone }) {
     }
     
     // result.result_url이 URL일 경우, Blob으로 변환
-    const response = await fetch(result.result_url);
-    const blob = await response.blob();
-    const file = new File([blob], "ai_character.png", { type: blob.type });
-    const formData = new FormData();
-    formData.append("userId", userId);
-    formData.append("file", file);
-    const res = await fetch("http://localhost:8080/api/ai-images", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`
-      },
-        body: formData
+     try {
+    // 1️⃣ Presigned URL 발급 요청
+    const fileName = `ai_character_${Date.now()}.png`;
+    const fileType = "image/png";
+
+    const presignRes = await fetch(
+        `http://localhost:8080/api/ai-images/presigned-url?filename=${encodeURIComponent(fileName)}&filetype=${encodeURIComponent(fileType)}`,
+        {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${accessToken}` },
+        }
+      );
+
+      if (!presignRes.ok) throw new Error("Presigned URL 발급 실패");
+      const { uploadUrl, fileUrl } = await presignRes.json(); 
+      // fileUrl: 업로드 후 최종 접근 URL
+
+      // 2️⃣ 외부 이미지 URL → Blob 변환
+      const imgRes = await fetch(result.result_url);
+      const blob = await imgRes.blob();
+
+      // 3️⃣ Presigned URL로 직접 업로드
+      const s3UploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: blob,
+        headers: {
+          "Content-Type": fileType
+        }
       });
-     if (res.ok) {
-      alert("이미지 저장 성공!");
-      // AI 이미지 개수 증가
-      setAiImageCount(prev => prev + 1);
-    } else {
-      const err = await res.json();
-      alert(err.message || "저장 실패");
+
+      if (!s3UploadRes.ok) throw new Error("S3 업로드 실패");
+
+      // 4️⃣ 최종 URL을 백엔드에 저장
+      const saveRes = await fetch("http://localhost:8080/api/ai-images/save-url", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId, imageUrl: fileUrl })
+      });
+
+      if (saveRes.ok) {
+        alert("이미지 저장 성공!");
+        setAiImageCount(prev => prev + 1);
+      } else {
+        const err = await saveRes.json();
+        alert(err.message || "DB 저장 실패");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "저장 중 오류 발생");
     }
   };
 
