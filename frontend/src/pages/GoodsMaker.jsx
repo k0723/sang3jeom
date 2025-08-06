@@ -798,7 +798,7 @@ export default function GoodsMaker() {
       formData.append('file', file);
 
       try {
-        const res = await imageServiceApi.post('/api/user-goods', formData, {
+        const res = await userServiceApi.post('/api/user-goods', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
